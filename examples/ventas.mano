@@ -1,0 +1,49 @@
+.analisis ventas_mensuales {
+    #datos
+    #estadistica
+
+    dataset cargar datos("datos/ventas.csv")
+
+    .limpiar dataset {
+        dataset:
+        #nulos("eliminar")
+        #duplicados("eliminar")
+    }
+
+    .transformar dataset {
+        dataset:
+        #total("precio * cantidad")
+        #periodo extraer("mes de fecha")
+    }
+
+    .ventas_validas {
+        dataset,
+        (filtrar)
+        #condicion("total > 0")
+        #resumen #agrupar
+        (ventas validas por "periodo")
+    }
+
+    .resultados {
+        dataset,
+        #resumir
+        (total_ventas)
+        (promedio_ventas)
+        (venta_maxima)
+        (venta_minima)
+    }
+
+    .visualizar {
+        dataset,
+        #resultados
+        (tipo "linea")
+        (eje_x = "periodo")
+        (eje_y = "total_ventas")
+    }
+
+    .exportar {
+        dataset,
+        #resultados
+        ("reporte_ventas.json")
+    }
+}
