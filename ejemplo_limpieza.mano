@@ -1,0 +1,26 @@
+.analisis limpieza_ejemplo {
+    #datos
+    #estadistica
+    
+    dataset cargar datos("datos_sucios.csv")
+    
+    .limpiar dataset {
+        dataset:
+        #nulos("eliminar")
+        #duplicados("eliminar")
+        #nulos("imputar_media")
+    }
+    
+    .resultados {
+        dataset,
+        #resumir
+        (total_registros)
+        (promedio_valor)
+    }
+    
+    .exportar {
+        dataset,
+        #resultados
+        ("resultado_limpio.json")
+    }
+}
