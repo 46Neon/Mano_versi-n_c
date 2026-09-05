@@ -2,17 +2,33 @@
 #define MANO_ANALYSIS_H
 
 #include "dataset.h"
+#include "schema.h"
 
-typedef struct AnalysisResult {
-    char *name;
-    double value;
-    struct AnalysisResult *next;
-} AnalysisResult;
+typedef struct {
+    size_t rows_seen;
+    size_t rows_used;
+    size_t rows_rejected;
+    double total;
+    double average;
+    double minimum;
+    double maximum;
+} SalesSummary;
 
-bool analysis_ventas(const Dataset *dataset,
-                    const char *date_column,
-                    const char *price_column,
-                    const char *quantity_column,
-                    const char *output_json);
+ManoStatus analysis_dataset_report(const Dataset *dataset,
+                                  const ManoSchema *schema,
+                                  const char *output_json,
+                                  ManoError *error);
+
+ManoStatus analysis_sales(const Dataset *dataset,
+                          const char *date_column,
+                          const char *price_column,
+                          const char *quantity_column,
+                          const char *output_json,
+                          SalesSummary *summary,
+                          ManoError *error);
+
+bool analysis_ventas(const Dataset *dataset, const char *date_column,
+                     const char *price_column, const char *quantity_column,
+                     const char *output_json);
 
 #endif

@@ -1,0 +1,33 @@
+.analisis comportamiento_clientes {
+    #datos
+    #estadistica
+
+    dataset cargar datos("datos/clientes_binarios.csv")
+
+    variable edad numerica
+    variable ciudad categorica
+    variable canal categorica
+    variable visitas numerica
+    variable cliente_activo binaria
+
+    entrada categorica "ciudad"
+    entrada categorica "canal"
+    salida binaria "compro"
+
+    .limpiar dataset {
+        #nulos("eliminar")
+        #duplicados("eliminar")
+    }
+
+    .estadistica {
+        #perfil_numerico("edad")
+        #histograma("edad", bins = 5)
+        #normalidad("edad")
+        #balance("compro")
+        #correlacion("edad", "visitas")
+    }
+
+    .exportar {
+        ("reporte_clientes.json")
+    }
+}

@@ -1,25 +1,42 @@
-CC = clang
-CFLAGS = -Wall -Wextra -std=c11 -pedantic -Iinclude -g
-SOURCES = src/main.c src/common.c src/arena.c src/lexer.c \
-          src/parser.c src/ast.c src/symbol.c src/semantic.c \
-          src/ir.c src/compiler.c src/vm.c src/gc.c \
-          src/module.c src/interpreter.c src/assembler.c \
-          src/instructions.c src/dataset.c src/analysis.c
+CC ?= cc
+CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -O2 -Iinclude
+LDFLAGS ?= -lm
+SOURCES = src/common.c src/schema.c src/dataset.c src/analysis.c src/script.c src/main.c \
+          src/sst_dates.c src/sst_model.c src/sst_stats.c src/sst_histogram.c \
+          src/sst_rates.c src/sst_report.c src/sst_report_advanced.c \
+          src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
+          src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = mano
 
-.PHONY: all clean test
+.PHONY: all clean test test-sst debug
+
+SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
+                   src/sst_stats.c src/sst_histogram.c src/sst_rates.c \
+                   src/sst_report.c src/sst_report_advanced.c \
+                   src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
+                   src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c
 
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) -o $(TARGET)
+	$(CC) $(CFLAGS) $(OBJECTS) $(LDFLAGS) -o $@
 
-%.o: %.c
+test-sst: tests/test_sst_modules
+	./tests/test_sst_modules
+
+tests/test_sst_modules: tests/test_sst_modules.c $(SST_TEST_SOURCES)
+	$(CC) $(CFLAGS) tests/test_sst_modules.c $(SST_TEST_SOURCES) $(LDFLAGS) -o $@
+
+src/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test: $(TARGET)
-	./$(TARGET) lex examples/ventas.mano
+debug:
+	$(MAKE) clean
+	$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -g3 -O0 -fsanitize=address,undefined -Iinclude' LDFLAGS='-fsanitize=address,undefined -lm'
+
+test: $(TARGET) test-sst
+	./tests/run_tests.sh
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) reporte_ventas.json
+	rm -f $(OBJECTS) $(TARGET) tests/test_sst_modules reporte.json resultado.json

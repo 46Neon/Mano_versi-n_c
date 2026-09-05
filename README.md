@@ -1,194 +1,238 @@
-# Mano — Lenguaje de programación (implementación en C)
+# Mano SST
 
-¡Bienvenido a Mano!  
-Mano es un lenguaje de programación compacto y expresivo con implementación en C, diseñado para aprender conceptos de diseño de lenguajes y para realizar análisis de datos ligeros desde la línea de comandos. Este repositorio contiene la implementación en C, ejemplos y utilidades para compilar, ejecutar y experimentar con el lenguaje.
+Mano es un lenguaje y motor pequeño escrito en C17 para analizar datos SST existentes. Su objetivo es detectar patrones, tendencias, distribuciones y comportamientos estadísticos que puedan apoyar la prevención de accidentes laborales.
 
----
+> **Alcance:** Mano es una herramienta tecnológica de apoyo. No sustituye al profesional de seguridad y salud laboral, una investigación de accidentes, un sistema oficial, una evaluación legal ni la toma de decisiones profesionales.
 
-## Qué es Mano
-Mano es un lenguaje de propósito educativo y práctico: combina sintaxis clara y reglas simples con herramientas para procesar datos y escribir lógica de programa sin la complejidad de lenguajes más grandes. Está pensado para:
-- Estudiantes y desarrolladores que quieren entender cómo se implementa un lenguaje en C.
-- Prototipado rápido de scripts para análisis de datos ligero (archivos CSV, transformaciones en memoria).
-- Enseñar parsing, interpretación y generación de salida desde código simple.
+## Qué puede hacer
 
-Mano destaca por tener una sintaxis muy fácil de usar: su gramática es pequeña, las declaraciones son directas y las operaciones comunes (lectura de archivos, filtros, agregaciones) se escriben con expresiones claras y legibles.
+- Cargar CSV con límites operativos para datasets pequeños.
+- Validar columnas, valores numéricos, categorías y variables binarias.
+- Analizar incidentes, severidad, días de incapacidad y exposición.
+- Comparar áreas, turnos, riesgos y grupos.
+- Detectar patrones, valores inválidos y señales estadísticas.
+- Generar reportes JSON reproducibles para revisión profesional.
+- Mantener advertencias explícitas sobre aproximaciones y causalidad.
 
----
+Mano analiza datos que ya existen; no determina por sí sola la causa de un accidente ni recomienda medidas legales automáticamente.
 
-## Ventajas principales
-- Implementación en C, eficiente y portátil.
-- Sintaxis fácil de aprender, pensada para lógica algorítmica y análisis de datos.
-- Herramientas básicas para análisis de datos: lectura CSV/TSV, filtros y agregaciones.
-- Código fuente modular: lexer, parser, AST, intérprete/VM y utilidades I/O.
-
----
-
-## Composición del repositorio
-- Lenguaje principal: C (implementación del compilador/intérprete)
-- Utilidades: scripts shell y Makefile para compilar y ejecutar
-- Ejemplos: programas Mano demostrativos (scripts .mano o .mn)
-
----
-
-## Cómo clonar y compilar
-Desde tu terminal:
+## Compilar
 
 ```bash
-git clone https://github.com/46Neon/Mano_versi-n_c.git
-cd Mano_versi-n_c
-# Compilar con Make (si existe Makefile)
+./build.sh
+```
+
+También se puede compilar con:
+
+```bash
 make
-# O compilar manualmente (ejemplo)
-gcc -O2 -std=c11 -o mano src/main.c src/lexer.c src/parser.c src/interpreter.c
 ```
 
-Notas:
-- Si el proyecto usa `Makefile`, `make` suele crear el ejecutable `mano` en la raíz o en `bin/`.
-- Si faltan dependencias, las verás en el `Makefile` o en scripts `build.sh`.
+La compilación utiliza C17 y advertencias estrictas. En un entorno de validación se recomienda ejecutar también GCC y Clang con ASan y UBSan.
 
----
-
-## Primeros pasos: ejecutar un script Mano
-Asumiendo que el binario se llama `mano`:
+## Ejecutar
 
 ```bash
-# Ejecutar un archivo .mano
-./mano examples/hello.mano
-
-# Ejecutar código desde stdin
-echo 'print("Hola, Mundo")' | ./mano -e -
+./mano analizar datos/ventas.csv reporte.json
+./mano perfil datos/clientes_binarios.csv perfil.json
+./mano run examples/clasificacion_binaria.mano
+./mano inspect datos/clientes_binarios.csv
 ```
 
----
+Un script produce el reporte general indicado en `.exportar`. Si contiene operaciones SST, también produce un archivo con el sufijo:
 
-## Alcances en análisis de datos
-Mano incluye utilidades y librerías estándar (simples) orientadas a procesamiento de datos:
-- Lectura de CSV/TSV con separación configurable.
-- Filtros por expresiones (p. ej. seleccionar filas donde columna X > 10).
-- Agregaciones básicas: sumas, promedios, contadores, máximos/mínimos.
-- Transformaciones: map/transform sobre columnas, combinación simple de archivos.
+```text
+reporte.json.sst.json
+```
 
-Limitaciones típicas:
-- No es una plataforma de análisis distribuido; está pensado para ficheros locales y conjuntos moderados de datos.
-- Para análisis a gran escala o multi-threading avanzado, integra mejor como prototipo que como solución final.
+## Sintaxis de variables
 
----
-
-## Sintaxis básica y crear lógica (guía rápida)
-A continuación se muestran ejemplos de sintaxis para crear lógica de programación en Mano. Son ejemplos ilustrativos y fáciles de adaptar.
-
-Variables y tipos:
 ```mano
-# declaración y asignación
-let x = 42
-let name = "María"
-let pi = 3.14159
+variable fecha fecha
+variable area categorica
+variable turno categorica
+variable severidad numerica
+variable dias_incapacidad numerica
+variable horas_exposicion numerica
+variable ocurrio_incidente binaria
+
+entrada categorica "area"
+salida binaria "ocurrio_incidente"
 ```
 
-Operadores:
+Tipos soportados:
+
+- `numerica`: validación con `strtod`, promedio, mínimo y máximo.
+- `categorica`: conteo de valores y nulos.
+- `binaria`: reconoce `0/1`, `true/false`, `verdadero/falso`, `yes/no` y `si/no`.
+- `fecha` y `texto`: metadata y validación básica.
+
+## Operaciones de limpieza
+
 ```mano
-let s = x + 10
-let cond = (x > 10) and (name != "")
+#nulos("eliminar")
+#duplicados("eliminar")
+#total("precio * cantidad")
+#periodo extraer("mes de fecha")
+#condicion("total > 0")
 ```
 
-Control de flujo:
+## Operaciones estadísticas SST
+
 ```mano
-if x > 10 {
-  print("x es mayor que 10")
-} else {
-  print("x es 10 o menor")
-}
-
-for i in 0..5 {
-  print(i)
-}
+#perfil_numerico("severidad")
+#perfil_avanzado("severidad")
+#histograma("severidad", bins = 5)
+#normalidad("severidad")
+#balance("ocurrio_incidente")
+#tasa("ocurrio_incidente", "horas_exposicion", factor = 200000)
+#poisson("ocurrio_incidente", "horas_exposicion", factor = 200000)
+#correlacion("severidad", "dias_incapacidad")
+#chi_cuadrado("area", "ocurrio_incidente")
 ```
 
-Funciones:
-```mano
-func suma(a, b) {
-  return a + b
-}
+### Interpretación de las operaciones
 
-let r = suma(4, 5)
-print(r)  # imprime 9
+- `#perfil_numerico`: resumen descriptivo de una variable.
+- `#perfil_avanzado`: CV, asimetría, kurtosis y percentiles.
+- `#histograma`: distribución por intervalos, underflow y overflow.
+- `#normalidad`: diagnóstico Jarque-Bera aproximado; no es Shapiro-Wilk exacto.
+- `#balance`: conteo de positivos, negativos e inválidos.
+- `#tasa`: incidentes divididos entre exposición y multiplicados por un factor.
+- `#poisson`: intervalo de tasa para conteos Poisson mediante inversión numérica de la CDF en rangos soportados.
+- `#correlacion`: Pearson con pares válidos y control de variación.
+- `#chi_cuadrado`: tabla de contingencia, estadístico, grados de libertad y celdas esperadas bajas.
+
+Las tasas siempre deben interpretarse junto con su denominador, factor, periodo y definición de exposición.
+
+## Comandos no soportados
+
+Un comando desconocido no se ignora. Mano produce un error explícito para evitar informes aparentemente completos:
+
+```text
+UNSUPPORTED: Comando Mano no reconocido; no se ignorará silenciosamente
 ```
 
-Procesamiento de CSV (ejemplo):
-```mano
-# leer archivo.csv, filtrar filas y sumar columna "ventas"
-data = read_csv("ventas.csv")
-filtered = filter(data, row -> row["pais"] == "ES" and row["ventas"] > 100)
-total = sum(filtered, row -> to_number(row["ventas"]))
-print("Total ventas ES:", total)
+Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.mano` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
+
+## Reportes y advertencias
+
+Los reportes incluyen, según corresponda:
+
+- filas cargadas y filas inválidas;
+- columnas y variables declaradas;
+- perfiles numéricos;
+- categorías y frecuencias;
+- valores nulos;
+- positivos, negativos e inválidos;
+- tasa y denominador;
+- tamaño muestral;
+- datos excluidos;
+- método utilizado;
+- indicador `aproximado`;
+- advertencias de muestra pequeña;
+- advertencia de que asociación estadística no implica causalidad.
+
+Estas advertencias son controles de interpretación, no una certificación legal ni una firma profesional.
+
+## Trazabilidad prevista
+
+Para que un análisis sea reproducible, el flujo profesional debe conservar:
+
+- archivo CSV original;
+- script `.mano` utilizado;
+- configuración y factor de exposición;
+- versión del motor;
+- reporte generado;
+- filas rechazadas y reglas de limpieza;
+- revisión del profesional SST.
+
+El logger del proyecto soporta texto y JSON Lines con `job_id`, timestamp, archivo, línea, función y mensaje. El módulo de métricas soporta contadores de filas y duración. La instrumentación completa de todas las operaciones continúa en evolución.
+
+## Límites por defecto
+
+```text
+máximo de filas:          5.000
+máximo de columnas:          70
+máximo aproximado por campo: 1 MiB
 ```
 
-Notas sobre la semántica:
-- Tipado dinámico (sencillo): números, cadenas, booleanos, listas y mapas (diccionarios).
-- Las funciones son de primera clase; las lambdas se usan para map/filter.
-- La sintaxis está pensada para ser legible y directa, parecida a lenguajes scripting.
+Estos límites hacen que el almacenamiento actual en memoria sea razonable para el alcance inicial. Mano no es todavía un sistema distribuido, un motor columnar ni una plataforma Big Data.
 
----
+## Arquitectura SST
 
-## Ejemplo completo: conteo por categoría
-Archivo: examples/count_by_category.mano
-```mano
-data = read_csv("items.csv")
-grouped = group_by(data, row -> row["categoria"])
-counts = map(grouped, (cat, rows) -> { "categoria": cat, "count": len(rows) })
-print_table(counts)
+```text
+CSV
+ ↓
+calidad y validación
+ ↓
+esquema y script Mano
+ ↓
+operación estadística
+ ↓
+módulo SST
+ ↓
+advertencias y trazabilidad
+ ↓
+reporte JSON
 ```
 
----
+Módulos principales:
 
-## Estructura de la implementación (visión técnica)
-- src/lexer.c        — Tokenización del código fuente
-- src/parser.c       — Construcción del AST
-- src/ast.c          — Definiciones de nodos del AST
-- src/interpreter.c  — Evaluador / motor de ejecución
-- src/io.c           — Funciones de lectura/escritura CSV y archivos
-- include/*.h        — Cabeceras públicas y tipos
-- examples/          — Scripts de ejemplo
-- tests/             — Pruebas unitarias y de integración
-- Makefile           — Instrucciones de compilación
+- `sst_dates`: fechas ISO, comparación, fechas futuras y días desde epoch.
+- `sst_model`: eventos SST, riesgos y valores binarios.
+- `sst_stats`: media, varianza, desviación estándar y Welford.
+- `sst_histogram`: histogramas con underflow, overflow e inválidos.
+- `sst_rates`: tasas por exposición y factor configurable.
+- `sst_advanced`: CV, asimetría, kurtosis y percentiles.
+- `sst_contingency`: tablas de contingencia y chi-cuadrado.
+- `sst_correlation`: correlación de Pearson.
+- `sst_normality`: diagnóstico Jarque-Bera aproximado.
+- `sst_inference`: Poisson, riesgo relativo, odds ratio y pruebas aproximadas.
+- `sst_report`: reportes generales.
+- `sst_report_advanced`: reportes estadísticos avanzados y advertencias.
+- `logger`: logging de texto o JSON Lines.
+- `metrics`: duración y contadores de ejecución.
 
----
+## Uso preventivo correcto
 
-## Cómo contribuir
-1. Haz fork del repositorio.
-2. Crea una rama con tu mejora: `git checkout -b feat/nombre`
-3. Añade tests cuando agregues funcionalidad.
-4. Crea un Pull Request describiendo el cambio y la motivación.
+```text
+Datos SST existentes
+        ↓
+Mano detecta patrones y señales
+        ↓
+Profesional SST interpreta y valida
+        ↓
+Investigación preventiva
+        ↓
+Medidas de control y seguimiento
+```
 
-Buenas contribuciones:
-- Nuevas funciones de manejo de datos (p. ej. soporte para JSON).
-- Optimización del analizador o del intérprete.
-- Ejemplos y documentación en español e inglés.
+Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales, distribución de severidad, diferencias entre turnos y posibles relaciones entre variables. No determina responsabilidades, no prueba causalidad y no reemplaza entrevistas, inspecciones, evidencias ni métodos formales de investigación.
 
----
+## Limitaciones actuales
 
-## Roadmap sugerido (ideas)
-- Soporte nativo para streaming CSV (memoria limitada).
-- Módulos de visualización básica (salida en JSON/CSV para consumo por otras herramientas).
-- Paquetes estándar para estadística y regresión básica.
-- Compilador JIT para acelerar cálculos intensivos.
+- No sustituye sistemas oficiales ni formularios regulatorios.
+- No certifica cumplimiento legal.
+- No determina causalidad.
+- No firma digitalmente reportes.
+- No gestiona expedientes médicos.
+- No propone automáticamente medidas de control.
+- Algunos métodos inferenciales son aproximados.
+- La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.mano` sigue pendiente.
+- La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
 
----
+## Próximas mejoras
 
-## Preguntas frecuentes (Rápido)
-- ¿Mano es compilado o interpretado?  
-  Mano en esta implementación es interpretado (ejecutor en C), pero se pueden añadir fases de compilación a bytecode.
-- ¿Puedo llamar a librerías C desde Mano?  
-  Sí, mediante una interfaz FFI mínima (si está implementada). Revisa `src/ffi.c` o `docs/ffi.md`.
-- ¿Qué formato de archivos soporta?  
-  CSV y TSV por defecto; otros formatos mediante extensiones.
+1. Completar la integración de inferencia con `.mano`.
+2. Añadir huellas SHA-256 de datos, scripts y reportes.
+3. Instrumentar completamente logger y métricas.
+4. Agregar pruebas estadísticas contra valores de referencia.
+5. Añadir análisis temporal y comparaciones antes/después.
+6. Crear una matriz configurable de peligros, controles y señales preventivas.
+7. Incorporar exportación tabular y documentación de métodos.
+8. Ejecutar validación con GCC, Clang, ASan, UBSan y pruebas de memoria.
 
----
+## Nota de responsabilidad
 
-## Licencia y contacto
-- Licencia: MIT (o la que prefieras) — añade archivo LICENSE con tu elección.
-- Autor / Mantenimiento: 46Neon — https://github.com/46Neon
-
----
-
-Este README fue agregado automáticamente por el asistente. Si quieres que lo adapte para reflejar archivos y comandos reales del repositorio —por ejemplo nombres exactos de `src/*.c`, ubicación del binario o ejemplos reales— haz público el repositorio o pega los archivos clave y actualizaré el README y el commit.
+Mano es una solución tecnológica de apoyo para análisis de datos SST y prevención. Las conclusiones que afecten la seguridad de trabajadores deben ser revisadas por personal competente y complementadas con la evidencia operativa correspondiente.
