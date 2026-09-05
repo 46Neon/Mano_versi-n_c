@@ -13,6 +13,11 @@ grep -q '"unos": 5' reporte_clientes.json
 grep -q '"histograma"' reporte_clientes.json.sst.json
 grep -q '"pearson"' reporte_clientes.json.sst.json
 grep -q '"normalidad"' reporte_clientes.json.sst.json
+project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+tmp_dir=$(mktemp -d)
+(cd "$tmp_dir" && "$project_dir/mano" run "$project_dir/examples/clasificacion_binaria.mano" >/dev/null)
+test -s "$project_dir/reporte_clientes.json.sst.json"
+rm -rf "$tmp_dir"
 ./mano perfil datos/clientes_binarios.csv perfil.json >/dev/null
 test -s perfil.json
 printf 'OK: pruebas de ventas, esquema binario, perfil y operaciones SST completadas\n'

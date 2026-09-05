@@ -8,6 +8,7 @@
 #include "sst_model.h"
 #include "sst_normality.h"
 #include "sst_rates.h"
+#include <ctype.h>
 
 static char *read_file(const char *filename, ManoError *error) {
     FILE *file = fopen(filename, "rb");
@@ -74,6 +75,102 @@ static bool get_quoted(const char *line, size_t number, char *out, size_t out_si
 
 static bool has_text(const char *text, const char *needle) {
     return text && needle && strstr(text, needle) != NULL;
+}
+
+static bool absolute_path(const char *path) {
+    return path && (path[0] == '/' || (isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')));
+}
+
+static bool regular_file_exists(const char *path) {
+    FILE *file = fopen(path, "rb");
+    if (!file) return false;
+    fclose(file);
+    return true;
+}
+
+static bool join_path(const char *base, const char *name, char *out, size_t out_size) {
+    int written = snprintf(out, out_size, "%s%s%s", base && base[0] ? base : ".",
+                           base && base[0] && base[strlen(base) - 1] == '/' ? "" : "/",
+                           name ? name : "");
+    return written >= 0 && (size_t)written < out_size;
+}
+
+static bool parent_path(const char *path, char *out, size_t out_size) {
+    if (!path || !path[0]) return false;
+    if (strcmp(path, "/") == 0 || strcmp(path, ".") == 0) return false;
+    if (strlen(path) + 1 > out_size) return false;
+    strcpy(out, path);
+    while (strlen(out) > 1 && out[strlen(out) - 1] == '/') out[strlen(out) - 1] = '\0';
+    char *slash = strrchr(out, '/');
+    if (!slash) { strcpy(out, "."); return true; }
+    if (slash == out) out[1] = '\0';
+    else *slash = '\0';
+    return true;
+}
+
+/*
+ * Busca los datos primero desde el directorio actual y luego desde el
+ * directorio del script y sus padres. Esto permite ejecutar un .mano desde
+ * cualquier carpeta sin romper scripts que usan rutas relativas al proyecto.
+ */
+static ManoStatus resolve_input_path(const char *script_file, const char *requested,
+                                     char *resolved, size_t resolved_size,
+                                     char *base, size_t base_size,
+                                     ManoError *error) {
+    if (!requested || !resolved || !base || requested[0] == '\0') return MANO_ERR_ARGUMENT;
+    if (absolute_path(requested)) {
+        if (strlen(requested) + 1 > resolved_size) return MANO_ERR_OVERFLOW;
+        strcpy(resolved, requested);
+        if (!regular_file_exists(resolved)) goto not_found;
+        char temporary[1024];
+        if (strlen(requested) + 1 > sizeof(temporary)) return MANO_ERR_OVERFLOW;
+        strcpy(temporary, requested);
+        char *slash = strrchr(temporary, '/');
+        if (slash) { if (slash == temporary) strcpy(base, "/"); else *slash = '\0', strcpy(base, temporary); }
+        else strcpy(base, ".");
+        return MANO_OK;
+    }
+
+    char script_dir[1024] = ".";
+    if (script_file && script_file[0]) {
+        if (strlen(script_file) + 1 > sizeof(script_dir)) return MANO_ERR_OVERFLOW;
+        strcpy(script_dir, script_file);
+        char *slash = strrchr(script_dir, '/');
+        if (slash) { if (slash == script_dir) script_dir[1] = '\0'; else *slash = '\0'; }
+        else strcpy(script_dir, ".");
+    }
+    char candidate[2048];
+    if (regular_file_exists(requested)) {
+        if (strlen(requested) + 1 > resolved_size || 2 > base_size) return MANO_ERR_OVERFLOW;
+        strcpy(resolved, requested); strcpy(base, "."); return MANO_OK;
+    }
+    char search_base[1024];
+    strcpy(search_base, script_dir);
+    for (size_t depth = 0; depth < 6; depth++) {
+        if (!join_path(search_base, requested, candidate, sizeof(candidate))) return MANO_ERR_OVERFLOW;
+        if (regular_file_exists(candidate)) {
+            if (strlen(candidate) + 1 > resolved_size || strlen(search_base) + 1 > base_size) return MANO_ERR_OVERFLOW;
+            strcpy(resolved, candidate); strcpy(base, search_base); return MANO_OK;
+        }
+        char parent[1024];
+        if (!parent_path(search_base, parent, sizeof(parent))) break;
+        strcpy(search_base, parent);
+    }
+
+not_found:
+    mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir el CSV indicado por el script");
+    return MANO_ERR_IO;
+}
+
+static ManoStatus resolve_output_path(const char *requested, const char *base,
+                                      char *resolved, size_t resolved_size) {
+    if (!requested || !resolved) return MANO_ERR_ARGUMENT;
+    if (absolute_path(requested)) {
+        if (strlen(requested) + 1 > resolved_size) return MANO_ERR_OVERFLOW;
+        strcpy(resolved, requested); return MANO_OK;
+    }
+    if (!join_path(base, requested, resolved, resolved_size)) return MANO_ERR_OVERFLOW;
+    return MANO_OK;
 }
 
 static ManoVariableType parse_type(const char *text, bool *valid) {
@@ -443,24 +540,31 @@ ManoStatus mano_run_script(const char *filename, ManoError *error) {
     if (status == MANO_OK) status = validate_commands(script, error);
     if (status != MANO_OK) { free(script); schema_destroy(&schema); return status; }
 
-    char input[1024] = {0}; char output[1024] = "reporte_dataset.json";
+    char input[1024] = {0};
+    char resolved_input[2048] = {0};
+    char resource_base[1024] = {0};
+    char output[1024] = "reporte_dataset.json";
+    char resolved_output[2048] = {0};
     if (!find_quoted_after(script, "dataset cargar", input, sizeof(input))) {
         free(script); schema_destroy(&schema); mano_error_set(error, MANO_ERR_PARSE, 0, 0, 0, "Falta dataset cargar datos(\"...\")"); return MANO_ERR_PARSE;
     }
+    status = resolve_input_path(filename, input, resolved_input, sizeof(resolved_input),
+                                resource_base, sizeof(resource_base), error);
     const char *export_pos = strstr(script, ".exportar");
-    if (export_pos) (void)find_quoted_after(export_pos, ".exportar", output, sizeof(output));
+    if (status == MANO_OK && export_pos && !find_quoted_after(export_pos, ".exportar", output, sizeof(output))) status = MANO_ERR_PARSE;
+    if (status == MANO_OK) status = resolve_output_path(output, resource_base, resolved_output, sizeof(resolved_output));
     if (has_text(script, "#total(\"precio * cantidad\")") && schema_index(&schema, "total") < 0) status = schema_add(&schema, "total", MANO_VAR_NUMERIC, MANO_ROLE_FEATURE, error);
     if (status == MANO_OK && has_text(script, "#periodo extraer(\"mes de fecha\")") && schema_index(&schema, "periodo") < 0) status = schema_add(&schema, "periodo", MANO_VAR_CATEGORICAL, MANO_ROLE_FEATURE, error);
 
     Dataset dataset; dataset_init(&dataset); DatasetLimits limits = dataset_default_limits();
-    if (status == MANO_OK) status = dataset_load_csv_with_limits(&dataset, input, ',', &limits, error);
+    if (status == MANO_OK) status = dataset_load_csv_with_limits(&dataset, resolved_input, ',', &limits, error);
     if (status == MANO_OK && has_text(script, "#nulos(\"eliminar\")")) status = dataset_remove_null_rows(&dataset, error);
     if (status == MANO_OK && has_text(script, "#duplicados(\"eliminar\")")) status = dataset_remove_duplicates(&dataset, error);
     if (status == MANO_OK && has_text(script, "#total(\"precio * cantidad\")")) status = dataset_add_product(&dataset, "precio", "cantidad", "total", error);
     if (status == MANO_OK && has_text(script, "#periodo extraer(\"mes de fecha\")")) status = dataset_add_month(&dataset, "fecha", "periodo", error);
     if (status == MANO_OK && has_text(script, "#condicion(\"total > 0\")")) status = dataset_filter_positive_product(&dataset, "precio", "cantidad", error);
-    if (status == MANO_OK) status = analysis_dataset_report(&dataset, &schema, output, error);
-    if (status == MANO_OK) status = run_sst_commands(script, &dataset, output, error);
+    if (status == MANO_OK) status = analysis_dataset_report(&dataset, &schema, resolved_output, error);
+    if (status == MANO_OK) status = run_sst_commands(script, &dataset, resolved_output, error);
     if (status == MANO_OK) { printf("Script ejecutado correctamente: %s\n", filename); printf("Filas: %zu | Columnas: %zu | Filas inválidas: %zu\n", dataset.row_count, dataset.column_count, dataset.invalid_rows); }
     dataset_destroy(&dataset); schema_destroy(&schema); free(script); return status;
 }
