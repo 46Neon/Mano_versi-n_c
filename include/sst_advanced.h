@@ -8,6 +8,8 @@ typedef struct {
     size_t invalid;
     double total_weight;
     double mean;
+    double minimum;
+    double maximum;
     double variance;
     double standard_deviation;
     double coefficient_variation;

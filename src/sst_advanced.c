@@ -54,6 +54,8 @@ ManoStatus sst_advanced_compute(const double *values, const double *weights,
         return MANO_ERR_DATA;
     }
     qsort(items, result->count, sizeof(*items), compare_weighted_values);
+    result->minimum = items[0].value;
+    result->maximum = items[result->count - 1].value;
     result->total_weight = weight_total;
     for (size_t i = 0; i < result->count; i++) {
         result->mean += items[i].value * items[i].weight;
