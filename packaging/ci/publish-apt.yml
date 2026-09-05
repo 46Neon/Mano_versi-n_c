@@ -1,0 +1,75 @@
+name: Publish Mano APT repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag de la Release que contiene los paquetes .deb'
+        required: true
+        default: 'v0.1.0'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  publish-apt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install APT tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg
+
+      - name: Select release tag
+        id: release
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.release_tag }}" ]; then
+            echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Debian packages from Release
+        shell: bash
+        run: |
+          mkdir -p dist/inputs
+          gh release download "${{ steps.release.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.deb' \
+            --dir dist/inputs \
+            --clobber
+          test -n "$(find dist/inputs -maxdepth 1 -name '*.deb' -print -quit)"
+
+      - name: Import signing key
+        shell: bash
+        env:
+          MANO_GPG_PRIVATE_KEY: ${{ secrets.MANO_GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$MANO_GPG_PRIVATE_KEY"
+          printf '%s\n' "$MANO_GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Generate signed repository
+        shell: bash
+        env:
+          MANO_GPG_KEY_ID: ${{ secrets.MANO_GPG_KEY_ID }}
+        run: |
+          test -n "$MANO_GPG_KEY_ID"
+          ./packaging/termux/generate-apt-repo.sh dist/inputs dist/apt
+          gpg --batch --armor --export "$MANO_GPG_KEY_ID" > dist/apt/mano-archive-keyring.asc
+
+      - name: Publish APT repository to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist/apt
+          force_orphan: true
+          keep_files: false
