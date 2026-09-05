@@ -240,7 +240,7 @@ todavía hay que publicar un repositorio APT con índices `Packages.gz`, metadat
 
 Un paquete Termux no debe mezclarse con un paquete Debian/Ubuntu ni con un ejecutable Windows. Cada plataforma requiere su propia compilación y distribución. Consulta `packaging/termux/README.md` antes de publicar.
 
-El canal Debian/Ubuntu está en `packaging/debian/` y el canal Windows en `packaging/windows/`. La automatización Linux/Windows está en `.github/workflows/build-release.yml`. El job Termux sigue siendo manual porque debe compilarse dentro del entorno Android/Termux y no debe sustituirse por un binario Linux con libc incompatible.
+El canal Debian/Ubuntu está en `packaging/debian/` y el canal Windows en `packaging/windows/`. La plantilla de automatización Linux/Windows está en `packaging/ci/build-release.yml`. El job Termux sigue siendo manual porque debe compilarse dentro del entorno Android/Termux y no debe sustituirse por un binario Linux con libc incompatible.
 
 ## Próximas mejoras
 
