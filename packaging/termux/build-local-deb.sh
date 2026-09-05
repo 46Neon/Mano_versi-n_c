@@ -20,7 +20,7 @@ done
 cd "$ROOT_DIR"
 make clean
 CC=clang make
-make test
+CC=clang make test
 
 ARCH="$(dpkg --print-architecture)"
 DIST_DIR="$ROOT_DIR/dist/termux"
@@ -29,6 +29,8 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/${PREFIX_DIR#/}/bin" \
          "$STAGE/${PREFIX_DIR#/}/share/doc/mano" \
          "$DIST_DIR"
+cleanup() { rm -rf "$STAGE"; }
+trap cleanup EXIT
 
 install -m 0755 mano "$STAGE/${PREFIX_DIR#/}/bin/mano"
 install -m 0644 README.md "$STAGE/${PREFIX_DIR#/}/share/doc/mano/README.md"
@@ -48,7 +50,11 @@ Description: Mano SST data analysis language
  statistical patterns and support accident prevention.
 EOF
 
+# Termux puede aplicar umask 077; dpkg-deb exige permisos legibles en DEBIAN.
+find "$STAGE" -type d -exec chmod 0755 {} +
+find "$STAGE" -type f -exec chmod 0644 {} +
+chmod 0755 "$STAGE/${PREFIX_DIR#/}/bin/mano"
+
 OUTPUT="$DIST_DIR/mano_${VERSION}_${ARCH}.deb"
 dpkg-deb --build "$STAGE" "$OUTPUT" >/dev/null
-rm -rf "$STAGE"
 printf 'Paquete creado: %s\n' "$OUTPUT"

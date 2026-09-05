@@ -18,10 +18,12 @@ done
 cd "$ROOT_DIR"
 make clean
 make CC="$CC_BIN"
-make test
+CC="$CC_BIN" make test
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/usr/bin" "$STAGE/usr/share/doc/mano"
+cleanup() { rm -rf "$STAGE"; }
+trap cleanup EXIT
 install -m 0755 mano "$STAGE/usr/bin/mano"
 install -m 0644 README.md "$STAGE/usr/share/doc/mano/README.md"
 cp -R examples "$STAGE/usr/share/doc/mano/"
@@ -37,6 +39,10 @@ Maintainer: Mano SST <maintainers@mano.invalid>
 Description: Mano SST data analysis language
  Mano detects statistical patterns in existing occupational safety and health data.
 EOF
+
+find "$STAGE" -type d -exec chmod 0755 {} +
+find "$STAGE" -type f -exec chmod 0644 {} +
+chmod 0755 "$STAGE/usr/bin/mano"
 
 mkdir -p "$DIST_DIR"
 OUTPUT="$DIST_DIR/mano_${VERSION}_${ARCH}.deb"
