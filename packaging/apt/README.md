@@ -23,6 +23,7 @@ Configura en el repositorio:
 ```text
 MANO_GPG_PRIVATE_KEY
 MANO_GPG_KEY_ID
+MANO_GPG_PASSPHRASE
 ```
 
 La clave privada no debe entrar al repositorio. La clave pública se publica como `mano-archive-keyring.asc` para que los usuarios puedan verificar el repositorio.

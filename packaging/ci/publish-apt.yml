@@ -60,8 +60,10 @@ jobs:
         shell: bash
         env:
           MANO_GPG_KEY_ID: ${{ secrets.MANO_GPG_KEY_ID }}
+          MANO_GPG_PASSPHRASE: ${{ secrets.MANO_GPG_PASSPHRASE }}
         run: |
           test -n "$MANO_GPG_KEY_ID"
+          test -n "$MANO_GPG_PASSPHRASE"
           ./packaging/termux/generate-apt-repo.sh dist/inputs dist/apt
           gpg --batch --armor --export "$MANO_GPG_KEY_ID" > dist/apt/mano-archive-keyring.asc
 

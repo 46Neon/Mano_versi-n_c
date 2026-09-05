@@ -31,9 +31,20 @@ for package in "$INPUT_DIR"/mano_*.deb; do
 done
 
 apt-ftparchive release "$OUTPUT_DIR/dists/stable" > "$OUTPUT_DIR/dists/stable/Release"
-gpg --batch --yes --local-user "$KEY_ID" --clearsign \
+GPG_ARGS=(--batch --yes --local-user "$KEY_ID")
+PASSPHRASE_FILE=""
+cleanup_passphrase() { [[ -z "$PASSPHRASE_FILE" ]] || rm -f "$PASSPHRASE_FILE"; }
+trap cleanup_passphrase EXIT
+if [[ -n "${MANO_GPG_PASSPHRASE:-}" ]]; then
+    PASSPHRASE_FILE="$OUTPUT_DIR/.gpg-passphrase"
+    umask 077
+    printf '%s' "$MANO_GPG_PASSPHRASE" > "$PASSPHRASE_FILE"
+    GPG_ARGS+=(--pinentry-mode loopback --passphrase-file "$PASSPHRASE_FILE")
+fi
+gpg "${GPG_ARGS[@]}" --clearsign \
     --output "$OUTPUT_DIR/dists/stable/InRelease" "$OUTPUT_DIR/dists/stable/Release"
-gpg --batch --yes --local-user "$KEY_ID" --armor --detach-sign \
+gpg "${GPG_ARGS[@]}" --armor --detach-sign \
     --output "$OUTPUT_DIR/dists/stable/Release.gpg" "$OUTPUT_DIR/dists/stable/Release"
+rm -f "$PASSPHRASE_FILE"
 
 printf 'Repositorio APT generado en %s\n' "$OUTPUT_DIR"
