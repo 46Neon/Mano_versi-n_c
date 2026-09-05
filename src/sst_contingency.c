@@ -120,8 +120,8 @@ ManoStatus sst_contingency_chi_square(const SstContingency2D *table,
     for (size_t r = 0; r < table->row_count; r++) {
         for (size_t c = 0; c < table->column_count; c++) {
             size_t value = table->cells[r * table->column_count + c];
-            row_totals[r] += value;
-            column_totals[c] += value;
+            row_totals[r] += (double)value;
+            column_totals[c] += (double)value;
         }
     }
     for (size_t r = 0; r < table->row_count; r++) {

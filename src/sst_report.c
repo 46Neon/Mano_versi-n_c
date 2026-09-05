@@ -1,19 +1,5 @@
 #include "sst_report.h"
 
-static void json_string(FILE *out, const char *text) {
-    fputc('"', out);
-    for (const unsigned char *p = (const unsigned char *)(text ? text : ""); *p; p++) {
-        if (*p == '"') fputs("\\\"", out);
-        else if (*p == '\\') fputs("\\\\", out);
-        else if (*p == '\n') fputs("\\n", out);
-        else if (*p == '\r') fputs("\\r", out);
-        else if (*p == '\t') fputs("\\t", out);
-        else if (*p < 0x20) fprintf(out, "\\u%04x", *p);
-        else fputc(*p, out);
-    }
-    fputc('"', out);
-}
-
 ManoStatus sst_report_write_json(const char *filename,
                                  const SstEventList *events,
                                  const SstStats *severity,
