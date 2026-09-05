@@ -222,6 +222,24 @@ Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales,
 - La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.mano` sigue pendiente.
 - La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
 
+## Empaquetado para Termux
+
+El flujo de empaquetado se encuentra en `packaging/termux/`. La primera fase genera un `.deb` local para la arquitectura de Termux donde se ejecuta:
+
+```bash
+./packaging/termux/build-local-deb.sh
+```
+
+Para ofrecer una instalación pública mediante:
+
+```bash
+pkg install mano
+```
+
+todavía hay que publicar un repositorio APT con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Pages puede servir esos archivos estáticos, pero una CI debe generarlos y firmarlos antes del despliegue.
+
+Un paquete Termux no debe mezclarse con un paquete Debian/Ubuntu ni con un ejecutable Windows. Cada plataforma requiere su propia compilación y distribución. Consulta `packaging/termux/README.md` antes de publicar.
+
 ## Próximas mejoras
 
 1. Completar la integración de inferencia con `.mano`.
