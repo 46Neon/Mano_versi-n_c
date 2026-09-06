@@ -1,5 +1,6 @@
 #include "array.h"
 
+#include <complex.h>
 #include <inttypes.h>
 
 struct MilenaArrayStorage {
@@ -16,8 +17,18 @@ static void array_error(MilenaError *error, MilenaStatus code,
 const char *milena_dtype_name(MilenaDType dtype) {
     switch (dtype) {
         case MILENA_DTYPE_BOOL: return "bool";
+        case MILENA_DTYPE_INT8: return "int8";
+        case MILENA_DTYPE_INT16: return "int16";
+        case MILENA_DTYPE_INT32: return "int32";
         case MILENA_DTYPE_INT64: return "int64";
+        case MILENA_DTYPE_UINT8: return "uint8";
+        case MILENA_DTYPE_UINT16: return "uint16";
+        case MILENA_DTYPE_UINT32: return "uint32";
+        case MILENA_DTYPE_UINT64: return "uint64";
+        case MILENA_DTYPE_FLOAT32: return "float32";
         case MILENA_DTYPE_FLOAT64: return "float64";
+        case MILENA_DTYPE_COMPLEX64: return "complex64";
+        case MILENA_DTYPE_COMPLEX128: return "complex128";
         default: return "unknown";
     }
 }
@@ -25,8 +36,18 @@ const char *milena_dtype_name(MilenaDType dtype) {
 size_t milena_dtype_size(MilenaDType dtype) {
     switch (dtype) {
         case MILENA_DTYPE_BOOL: return sizeof(bool);
+        case MILENA_DTYPE_INT8: return sizeof(int8_t);
+        case MILENA_DTYPE_INT16: return sizeof(int16_t);
+        case MILENA_DTYPE_INT32: return sizeof(int32_t);
         case MILENA_DTYPE_INT64: return sizeof(int64_t);
+        case MILENA_DTYPE_UINT8: return sizeof(uint8_t);
+        case MILENA_DTYPE_UINT16: return sizeof(uint16_t);
+        case MILENA_DTYPE_UINT32: return sizeof(uint32_t);
+        case MILENA_DTYPE_UINT64: return sizeof(uint64_t);
+        case MILENA_DTYPE_FLOAT32: return sizeof(float);
         case MILENA_DTYPE_FLOAT64: return sizeof(double);
+        case MILENA_DTYPE_COMPLEX64: return sizeof(float complex);
+        case MILENA_DTYPE_COMPLEX128: return sizeof(double complex);
         default: return 0;
     }
 }
@@ -157,6 +178,24 @@ MilenaStatus milena_array_from_f64(MilenaArray *out, size_t ndim,
     if (out->size > 0) {
         memcpy(out->storage->data + out->byte_offset, values,
                out->size * sizeof(double));
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_from_i64(MilenaArray *out, size_t ndim,
+                                   const size_t *shape, const int64_t *values,
+                                   MilenaError *error) {
+    MilenaStatus status = allocate_array(out, MILENA_DTYPE_INT64, ndim,
+                                         shape, error);
+    if (status != MILENA_OK) return status;
+    if (out->size > 0 && !values) {
+        milena_array_release(out);
+        array_error(error, MILENA_ERR_ARGUMENT, "Faltan valores int64 para inicializar el array");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (out->size > 0) {
+        memcpy(out->storage->data + out->byte_offset, values,
+               out->size * sizeof(int64_t));
     }
     return MILENA_OK;
 }
@@ -352,6 +391,118 @@ static ptrdiff_t element_offset(const MilenaArray *array,
         offset += (ptrdiff_t)coordinate * array->strides[axis];
     }
     return offset;
+}
+
+static bool array_read_real(const MilenaArray *source, size_t index,
+                            long double *value) {
+    size_t *coordinates = source->ndim > 0 ?
+        (size_t *)calloc(source->ndim, sizeof(size_t)) : NULL;
+    if (source->ndim > 0 && !coordinates) return false;
+    size_t remaining = index;
+    for (size_t axis = source->ndim; axis > 0; axis--) {
+        size_t current = axis - 1;
+        coordinates[current] = source->shape[current] == 0 ? 0 :
+            remaining % source->shape[current];
+        if (source->shape[current] > 0) remaining /= source->shape[current];
+    }
+    ptrdiff_t offset = element_offset(source, coordinates, source->ndim);
+    const unsigned char *data = source->storage->data + offset;
+    switch (source->dtype) {
+        case MILENA_DTYPE_BOOL: *value = *(const bool *)data ? 1.0L : 0.0L; break;
+        case MILENA_DTYPE_INT8: *value = (long double)*(const int8_t *)data; break;
+        case MILENA_DTYPE_INT16: *value = (long double)*(const int16_t *)data; break;
+        case MILENA_DTYPE_INT32: *value = (long double)*(const int32_t *)data; break;
+        case MILENA_DTYPE_INT64: *value = (long double)*(const int64_t *)data; break;
+        case MILENA_DTYPE_UINT8: *value = (long double)*(const uint8_t *)data; break;
+        case MILENA_DTYPE_UINT16: *value = (long double)*(const uint16_t *)data; break;
+        case MILENA_DTYPE_UINT32: *value = (long double)*(const uint32_t *)data; break;
+        case MILENA_DTYPE_UINT64: *value = (long double)*(const uint64_t *)data; break;
+        case MILENA_DTYPE_FLOAT32: *value = (long double)*(const float *)data; break;
+        case MILENA_DTYPE_FLOAT64: *value = (long double)*(const double *)data; break;
+        default:
+            free(coordinates);
+            return false;
+    }
+    free(coordinates);
+    return true;
+}
+
+static MilenaStatus cast_real_value(void *destination, MilenaDType dtype,
+                                    long double value, MilenaError *error) {
+    if (dtype != MILENA_DTYPE_BOOL && !isfinite(value)) {
+        array_error(error, MILENA_ERR_TYPE, "No se puede convertir NaN o infinito a un tipo entero");
+        return MILENA_ERR_TYPE;
+    }
+    switch (dtype) {
+        case MILENA_DTYPE_BOOL: *(bool *)destination = value != 0.0L; break;
+        case MILENA_DTYPE_INT8:
+            if (value < (long double)INT8_MIN || value > (long double)INT8_MAX) goto range_error;
+            *(int8_t *)destination = (int8_t)value; break;
+        case MILENA_DTYPE_INT16:
+            if (value < (long double)INT16_MIN || value > (long double)INT16_MAX) goto range_error;
+            *(int16_t *)destination = (int16_t)value; break;
+        case MILENA_DTYPE_INT32:
+            if (value < (long double)INT32_MIN || value > (long double)INT32_MAX) goto range_error;
+            *(int32_t *)destination = (int32_t)value; break;
+        case MILENA_DTYPE_INT64:
+            if (value < (long double)INT64_MIN || value > (long double)INT64_MAX) goto range_error;
+            *(int64_t *)destination = (int64_t)value; break;
+        case MILENA_DTYPE_UINT8:
+            if (value < 0.0L || value > (long double)UINT8_MAX) goto range_error;
+            *(uint8_t *)destination = (uint8_t)value; break;
+        case MILENA_DTYPE_UINT16:
+            if (value < 0.0L || value > (long double)UINT16_MAX) goto range_error;
+            *(uint16_t *)destination = (uint16_t)value; break;
+        case MILENA_DTYPE_UINT32:
+            if (value < 0.0L || value > (long double)UINT32_MAX) goto range_error;
+            *(uint32_t *)destination = (uint32_t)value; break;
+        case MILENA_DTYPE_UINT64:
+            if (value < 0.0L || value > (long double)UINT64_MAX) goto range_error;
+            *(uint64_t *)destination = (uint64_t)value; break;
+        case MILENA_DTYPE_FLOAT32: *(float *)destination = (float)value; break;
+        case MILENA_DTYPE_FLOAT64: *(double *)destination = (double)value; break;
+        default:
+            array_error(error, MILENA_ERR_UNSUPPORTED, "Conversión de complex aún no implementada");
+            return MILENA_ERR_UNSUPPORTED;
+    }
+    return MILENA_OK;
+
+range_error:
+    array_error(error, MILENA_ERR_OVERFLOW, "El valor no cabe en el dtype solicitado");
+    return MILENA_ERR_OVERFLOW;
+}
+
+MilenaStatus milena_array_cast(MilenaArray *out, const MilenaArray *source,
+                               MilenaDType dtype, MilenaError *error) {
+    if (!out || !source || !source->storage || !valid_dtype(dtype)) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para conversión de dtype");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (source->dtype == MILENA_DTYPE_COMPLEX64 ||
+        source->dtype == MILENA_DTYPE_COMPLEX128 ||
+        dtype == MILENA_DTYPE_COMPLEX64 || dtype == MILENA_DTYPE_COMPLEX128) {
+        array_error(error, MILENA_ERR_UNSUPPORTED, "Conversión de complex aún no implementada");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+    MilenaStatus status = allocate_array(out, dtype, source->ndim,
+                                         source->shape, error);
+    if (status != MILENA_OK) return status;
+    for (size_t i = 0; i < source->size; i++) {
+        long double value = 0.0L;
+        if (!array_read_real(source, i, &value)) {
+            milena_array_release(out);
+            array_error(error, MILENA_ERR_MEMORY, "No se pudo leer el valor del array");
+            return MILENA_ERR_MEMORY;
+        }
+        status = cast_real_value((unsigned char *)out->storage->data +
+                                     i * out->itemsize,
+                                 dtype, value, error);
+        if (status != MILENA_OK) {
+            milena_array_release(out);
+            return status;
+        }
+    }
+    return MILENA_OK;
 }
 
 static MilenaStatus broadcast_shape(size_t *output_ndim, size_t **output_shape,

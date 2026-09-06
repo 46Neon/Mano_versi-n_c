@@ -9,8 +9,18 @@ extern "C" {
 
 typedef enum {
     MILENA_DTYPE_BOOL = 0,
+    MILENA_DTYPE_INT8,
+    MILENA_DTYPE_INT16,
+    MILENA_DTYPE_INT32,
     MILENA_DTYPE_INT64,
-    MILENA_DTYPE_FLOAT64
+    MILENA_DTYPE_UINT8,
+    MILENA_DTYPE_UINT16,
+    MILENA_DTYPE_UINT32,
+    MILENA_DTYPE_UINT64,
+    MILENA_DTYPE_FLOAT32,
+    MILENA_DTYPE_FLOAT64,
+    MILENA_DTYPE_COMPLEX64,
+    MILENA_DTYPE_COMPLEX128
 } MilenaDType;
 
 typedef struct MilenaArrayStorage MilenaArrayStorage;
@@ -40,6 +50,11 @@ MilenaStatus milena_array_zeros(MilenaArray *out, MilenaDType dtype,
 MilenaStatus milena_array_from_f64(MilenaArray *out, size_t ndim,
                                    const size_t *shape, const double *values,
                                    MilenaError *error);
+MilenaStatus milena_array_from_i64(MilenaArray *out, size_t ndim,
+                                   const size_t *shape, const int64_t *values,
+                                   MilenaError *error);
+MilenaStatus milena_array_cast(MilenaArray *out, const MilenaArray *source,
+                               MilenaDType dtype, MilenaError *error);
 
 void milena_array_retain(MilenaArray *array);
 void milena_array_release(MilenaArray *array);

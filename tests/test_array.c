@@ -13,6 +13,42 @@ static void expect_ok(MilenaStatus status, const MilenaError *error) {
     }
 }
 
+static void test_dtypes_and_casts(void) {
+    const size_t shape[] = {4};
+    const int64_t values[] = {-2, 0, 7, 255};
+    const MilenaDType dtypes[] = {
+        MILENA_DTYPE_BOOL, MILENA_DTYPE_INT8, MILENA_DTYPE_INT16,
+        MILENA_DTYPE_INT32, MILENA_DTYPE_INT64, MILENA_DTYPE_UINT8,
+        MILENA_DTYPE_UINT16, MILENA_DTYPE_UINT32, MILENA_DTYPE_UINT64,
+        MILENA_DTYPE_FLOAT32, MILENA_DTYPE_FLOAT64,
+        MILENA_DTYPE_COMPLEX64, MILENA_DTYPE_COMPLEX128
+    };
+    MilenaError error;
+    milena_error_clear(&error);
+
+    for (size_t i = 0; i < sizeof(dtypes) / sizeof(dtypes[0]); i++) {
+        MilenaArray zeros = {0};
+        expect_ok(milena_array_zeros(&zeros, dtypes[i], 1, shape, &error), &error);
+        assert(zeros.size == 4);
+        assert(milena_dtype_size(dtypes[i]) == zeros.itemsize);
+        assert(strcmp(milena_dtype_name(dtypes[i]), "unknown") != 0);
+        milena_array_release(&zeros);
+    }
+
+    MilenaArray source = {0};
+    MilenaArray small = {0};
+    MilenaArray real = {0};
+    expect_ok(milena_array_from_i64(&source, 1, shape, values, &error), &error);
+    expect_ok(milena_array_cast(&small, &source, MILENA_DTYPE_INT16, &error), &error);
+    expect_ok(milena_array_cast(&real, &source, MILENA_DTYPE_FLOAT32, &error), &error);
+    assert(((const int16_t *)milena_array_const_data(&small))[3] == 255);
+    assert(((const float *)milena_array_const_data(&real))[0] == -2.0f);
+
+    milena_array_release(&real);
+    milena_array_release(&small);
+    milena_array_release(&source);
+}
+
 static void test_creation_and_reshape(void) {
     const size_t shape[] = {2, 3};
     const double values[] = {1, 2, 3, 4, 5, 6};
@@ -137,6 +173,7 @@ static void test_sum_by_axis(void) {
 }
 
 int main(void) {
+    test_dtypes_and_casts();
     test_creation_and_reshape();
     test_broadcast_add();
     test_slice_views();
