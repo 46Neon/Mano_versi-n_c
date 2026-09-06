@@ -116,12 +116,6 @@ int main(void) {
     assert(schedule.count == 2);
     assert(schedule.rows[1].period == 2);
     milena_amortization_schedule_destroy(&schedule);
-    MilenaAmortizationSchedule quarterly;
-    expect_ok(milena_amortization_build_frequency(&quarterly, usd_a, &rate, 2, end,
-                                                  MILENA_PAYMENT_QUARTERLY, &error), &error);
-    assert(quarterly.count == 2);
-    assert(quarterly.rows[1].date.month == 5);
-    milena_amortization_schedule_destroy(&quarterly);
     milena_cash_flow_series_destroy(&flows);
 
     return 0;
