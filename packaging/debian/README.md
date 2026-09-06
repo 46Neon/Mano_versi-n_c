@@ -15,7 +15,7 @@ sudo apt install build-essential clang dpkg-dev
 Resultado esperado:
 
 ```text
-dist/debian/mano_VERSION_amd64.deb
+dist/debian/milena_VERSION_amd64.deb
 ```
 
 Para ARM64 se necesita un toolchain cruzado o un runner ARM64 y una compilación separada. No se debe reutilizar un `.deb` generado para Termux.

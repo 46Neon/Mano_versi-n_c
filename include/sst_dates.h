@@ -1,5 +1,5 @@
-#ifndef MANO_SST_DATES_H
-#define MANO_SST_DATES_H
+#ifndef MILENA_SST_DATES_H
+#define MILENA_SST_DATES_H
 
 #include "common.h"
 
@@ -8,11 +8,11 @@ typedef struct {
     unsigned month;
     unsigned day;
     bool valid;
-} ManoDate;
+} MilenaDate;
 
-ManoStatus sst_date_parse(const char *text, ManoDate *date, ManoError *error);
-int sst_date_compare(const ManoDate *left, const ManoDate *right);
-bool sst_date_is_future(const ManoDate *date, const ManoDate *reference);
-int64_t sst_date_epoch_days(const ManoDate *date);
+MilenaStatus sst_date_parse(const char *text, MilenaDate *date, MilenaError *error);
+int sst_date_compare(const MilenaDate *left, const MilenaDate *right);
+bool sst_date_is_future(const MilenaDate *date, const MilenaDate *reference);
+int64_t sst_date_epoch_days(const MilenaDate *date);
 
 #endif

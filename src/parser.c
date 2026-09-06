@@ -5,11 +5,11 @@ void parser_init(Parser *parser, Lexer *lexer) {
     parser->current = lexer_next_token(lexer);
     parser->previous = parser->current;
     parser->has_error = false;
-    mano_error_init(&parser->error);
+    milena_error_init(&parser->error);
 }
 
 void parser_error(Parser *parser, const char *msg) {
-    mano_error_set(&parser->error, MANO_ERROR_SYNTAX, msg,
+    milena_error_set(&parser->error, MILENA_ERROR_SYNTAX, msg,
                   parser->current.line, parser->current.column);
     parser->has_error = true;
 }

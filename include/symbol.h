@@ -1,5 +1,5 @@
-#ifndef MANO_SYMBOL_H
-#define MANO_SYMBOL_H
+#ifndef MILENA_SYMBOL_H
+#define MILENA_SYMBOL_H
 
 #include "common.h"
 #include "ast.h"

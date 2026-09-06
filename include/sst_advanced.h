@@ -1,5 +1,5 @@
-#ifndef MANO_SST_ADVANCED_H
-#define MANO_SST_ADVANCED_H
+#ifndef MILENA_SST_ADVANCED_H
+#define MILENA_SST_ADVANCED_H
 
 #include "common.h"
 
@@ -20,8 +20,8 @@ typedef struct {
     bool valid;
 } SstAdvancedStats;
 
-ManoStatus sst_advanced_compute(const double *values, const double *weights,
+MilenaStatus sst_advanced_compute(const double *values, const double *weights,
                                 size_t count, SstAdvancedStats *result,
-                                ManoError *error);
+                                MilenaError *error);
 
 #endif

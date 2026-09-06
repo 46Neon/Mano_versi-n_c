@@ -7,7 +7,7 @@ SOURCES = src/common.c src/schema.c src/dataset.c src/analysis.c src/script.c sr
           src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
           src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c
 OBJECTS = $(SOURCES:.c=.o)
-TARGET = mano
+TARGET = milena
 
 .PHONY: all clean test test-sst debug
 

@@ -4,11 +4,11 @@
 
 static const char *level_names[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
-const char *mano_log_level_name(ManoLogLevel level) {
-    return level >= MANO_LOG_DEBUG && level <= MANO_LOG_FATAL ? level_names[level] : "UNKNOWN";
+const char *milena_log_level_name(MilenaLogLevel level) {
+    return level >= MILENA_LOG_DEBUG && level <= MILENA_LOG_FATAL ? level_names[level] : "UNKNOWN";
 }
 
-void mano_logger_init(ManoLogger *logger, ManoLogLevel minimum_level,
+void milena_logger_init(MilenaLogger *logger, MilenaLogLevel minimum_level,
                       FILE *output, bool json_format) {
     if (!logger) return;
     logger->minimum_level = minimum_level;
@@ -17,19 +17,19 @@ void mano_logger_init(ManoLogger *logger, ManoLogLevel minimum_level,
     logger->job_id = NULL;
 }
 
-void mano_logger_destroy(ManoLogger *logger) {
+void milena_logger_destroy(MilenaLogger *logger) {
     if (!logger) return;
     free(logger->job_id);
     logger->job_id = NULL;
 }
 
-ManoStatus mano_logger_set_job_id(ManoLogger *logger, const char *job_id) {
-    if (!logger) return MANO_ERR_ARGUMENT;
-    char *copy = job_id ? mano_strdup(job_id) : NULL;
-    if (job_id && !copy) return MANO_ERR_MEMORY;
+MilenaStatus milena_logger_set_job_id(MilenaLogger *logger, const char *job_id) {
+    if (!logger) return MILENA_ERR_ARGUMENT;
+    char *copy = job_id ? milena_strdup(job_id) : NULL;
+    if (job_id && !copy) return MILENA_ERR_MEMORY;
     free(logger->job_id);
     logger->job_id = copy;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 static void json_string(FILE *out, const char *text) {
@@ -46,10 +46,10 @@ static void json_string(FILE *out, const char *text) {
     fputc('"', out);
 }
 
-void mano_logger_log(ManoLogger *logger, ManoLogLevel level,
+void milena_logger_log(MilenaLogger *logger, MilenaLogLevel level,
                      const char *file, int line, const char *function,
                      const char *format, ...) {
-    if (!logger || level < logger->minimum_level || level > MANO_LOG_FATAL) return;
+    if (!logger || level < logger->minimum_level || level > MILENA_LOG_FATAL) return;
     char message[1024];
     va_list args;
     va_start(args, format);
@@ -65,7 +65,7 @@ void mano_logger_log(ManoLogger *logger, ManoLogLevel level,
 
     if (logger->json_format) {
         fprintf(logger->output, "{\"timestamp\":"); json_string(logger->output, timestamp);
-        fprintf(logger->output, ",\"level\":"); json_string(logger->output, mano_log_level_name(level));
+        fprintf(logger->output, ",\"level\":"); json_string(logger->output, milena_log_level_name(level));
         fprintf(logger->output, ",\"job_id\":"); json_string(logger->output, logger->job_id);
         fprintf(logger->output, ",\"file\":"); json_string(logger->output, file);
         fprintf(logger->output, ",\"line\":%d,\"function\":", line);
@@ -74,7 +74,7 @@ void mano_logger_log(ManoLogger *logger, ManoLogLevel level,
         fputs("}\n", logger->output);
     } else {
         fprintf(logger->output, "[%s] %s: %s\n", timestamp,
-                mano_log_level_name(level), message);
+                milena_log_level_name(level), message);
     }
     (void)fflush(logger->output);
 }

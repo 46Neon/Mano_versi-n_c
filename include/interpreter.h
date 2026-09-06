@@ -1,5 +1,5 @@
-#ifndef MANO_INTERPRETER_H
-#define MANO_INTERPRETER_H
+#ifndef MILENA_INTERPRETER_H
+#define MILENA_INTERPRETER_H
 
 #include "common.h"
 #include "ast.h"
@@ -11,7 +11,7 @@ typedef struct Interpreter {
     SymbolTable *symbols;
     Dataset *dataset;
     bool has_error;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
 } Interpreter;
 
 bool interpreter_init(Interpreter *interpreter, ASTNode *ast);

@@ -1,5 +1,5 @@
-#ifndef MANO_IR_H
-#define MANO_IR_H
+#ifndef MILENA_IR_H
+#define MILENA_IR_H
 
 #include "common.h"
 #include "ast.h"

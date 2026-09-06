@@ -1,5 +1,5 @@
-#ifndef MANO_AST_H
-#define MANO_AST_H
+#ifndef MILENA_AST_H
+#define MILENA_AST_H
 
 #include "common.h"
 #include "token.h"

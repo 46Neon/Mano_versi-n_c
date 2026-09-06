@@ -40,7 +40,7 @@ typedef struct {
     size_t count;
 } CategoryCount;
 
-static ManoStatus collect_categories(const Dataset *dataset, size_t column,
+static MilenaStatus collect_categories(const Dataset *dataset, size_t column,
                                      CategoryCount **out, size_t *out_count,
                                      size_t *nulls) {
     CategoryCount *items = NULL;
@@ -65,7 +65,7 @@ static ManoStatus collect_categories(const Dataset *dataset, size_t column,
                 CategoryCount *tmp = (CategoryCount *)realloc(items, next * sizeof(*tmp));
                 if (!tmp) {
                     free(items);
-                    return MANO_ERR_MEMORY;
+                    return MILENA_ERR_MEMORY;
                 }
                 items = tmp;
                 capacity = next;
@@ -77,7 +77,7 @@ static ManoStatus collect_categories(const Dataset *dataset, size_t column,
     }
     *out = items;
     *out_count = count;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 static void write_numeric_profile(FILE *out, const Dataset *dataset, size_t column) {
@@ -85,7 +85,7 @@ static void write_numeric_profile(FILE *out, const Dataset *dataset, size_t colu
     double sum = 0.0, min = DBL_MAX, max = -DBL_MAX;
     for (size_t r = 0; r < dataset->row_count; r++) {
         double value;
-        if (mano_parse_double(dataset->rows[r][column], &value) != MANO_OK) {
+        if (milena_parse_double(dataset->rows[r][column], &value) != MILENA_OK) {
             invalid++;
             continue;
         }
@@ -100,22 +100,22 @@ static void write_numeric_profile(FILE *out, const Dataset *dataset, size_t colu
             valid ? min : 0.0, valid ? max : 0.0);
 }
 
-ManoStatus analysis_dataset_report(const Dataset *dataset,
-                                  const ManoSchema *schema,
+MilenaStatus analysis_dataset_report(const Dataset *dataset,
+                                  const MilenaSchema *schema,
                                   const char *output_json,
-                                  ManoError *error) {
-    if (!dataset || !schema || !output_json) return MANO_ERR_ARGUMENT;
+                                  MilenaError *error) {
+    if (!dataset || !schema || !output_json) return MILENA_ERR_ARGUMENT;
     FILE *out = fopen(output_json, "wb");
     if (!out) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir reporte de dataset");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir reporte de dataset");
+        return MILENA_ERR_IO;
     }
     fprintf(out, "{\n  \"analisis\": \"dataset\",\n");
     fprintf(out, "  \"filas\": %zu,\n  \"columnas\": %zu,\n  \"filas_invalidas\": %zu,\n",
             dataset->row_count, dataset->column_count, dataset->invalid_rows);
     fprintf(out, "  \"variables\": [\n");
     for (size_t i = 0; i < schema->count; i++) {
-        const ManoVariable *variable = &schema->variables[i];
+        const MilenaVariable *variable = &schema->variables[i];
         if (i) fputs(",\n", out);
         fprintf(out, "    {\"nombre\": ");
         write_json_string(out, variable->name);
@@ -130,7 +130,7 @@ ManoStatus analysis_dataset_report(const Dataset *dataset,
         }
         fputs(", \"estado\": \"ok\", \"columna\": ", out);
         fprintf(out, "%d", index);
-        if (variable->type == MANO_VAR_NUMERIC) {
+        if (variable->type == MILENA_VAR_NUMERIC) {
             fputs(", ", out);
             write_numeric_profile(out, dataset, (size_t)index);
         }
@@ -139,15 +139,15 @@ ManoStatus analysis_dataset_report(const Dataset *dataset,
     fprintf(out, "\n  ],\n  \"entradas_categoricas\": [\n");
     bool first_input = true;
     for (size_t i = 0; i < schema->count; i++) {
-        const ManoVariable *variable = &schema->variables[i];
-        if (variable->role != MANO_ROLE_CATEGORICAL_INPUT) continue;
+        const MilenaVariable *variable = &schema->variables[i];
+        if (variable->role != MILENA_ROLE_CATEGORICAL_INPUT) continue;
         int index = dataset_column_index(dataset, variable->name);
         if (index < 0) continue;
         CategoryCount *items = NULL;
         size_t item_count = 0, nulls = 0;
-        ManoStatus status = collect_categories(dataset, (size_t)index,
+        MilenaStatus status = collect_categories(dataset, (size_t)index,
                                                &items, &item_count, &nulls);
-        if (status != MANO_OK) {
+        if (status != MILENA_OK) {
             fclose(out);
             return status;
         }
@@ -168,8 +168,8 @@ ManoStatus analysis_dataset_report(const Dataset *dataset,
     fprintf(out, "\n  ],\n  \"salidas_binarias\": [\n");
     bool first_target = true;
     for (size_t i = 0; i < schema->count; i++) {
-        const ManoVariable *variable = &schema->variables[i];
-        if (variable->role != MANO_ROLE_BINARY_OUTPUT) continue;
+        const MilenaVariable *variable = &schema->variables[i];
+        if (variable->role != MILENA_ROLE_BINARY_OUTPUT) continue;
         int index = dataset_column_index(dataset, variable->name);
         if (index < 0) continue;
         size_t zeros = 0, ones = 0, invalid = 0;
@@ -190,36 +190,36 @@ ManoStatus analysis_dataset_report(const Dataset *dataset,
     bool io_error = ferror(out) != 0;
     if (fclose(out) != 0) io_error = true;
     if (io_error) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "Error escribiendo reporte de dataset");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "Error escribiendo reporte de dataset");
+        return MILENA_ERR_IO;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus analysis_sales(const Dataset *dataset,
+MilenaStatus analysis_sales(const Dataset *dataset,
                           const char *date_column,
                           const char *price_column,
                           const char *quantity_column,
                           const char *output_json,
                           SalesSummary *summary,
-                          ManoError *error) {
+                          MilenaError *error) {
     if (!dataset || !date_column || !price_column || !quantity_column ||
-        !output_json || !summary) return MANO_ERR_ARGUMENT;
+        !output_json || !summary) return MILENA_ERR_ARGUMENT;
     memset(summary, 0, sizeof(*summary));
     int date_i = dataset_column_index(dataset, date_column);
     int price_i = dataset_column_index(dataset, price_column);
     int quantity_i = dataset_column_index(dataset, quantity_column);
     if (date_i < 0 || price_i < 0 || quantity_i < 0) {
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0, "Columna requerida inexistente");
-        return MANO_ERR_DATA;
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0, "Columna requerida inexistente");
+        return MILENA_ERR_DATA;
     }
 
     summary->minimum = DBL_MAX;
     for (size_t r = 0; r < dataset->row_count; r++) {
         summary->rows_seen++;
         double price, quantity;
-        if (mano_parse_double(dataset->rows[r][price_i], &price) != MANO_OK ||
-            mano_parse_double(dataset->rows[r][quantity_i], &quantity) != MANO_OK) {
+        if (milena_parse_double(dataset->rows[r][price_i], &price) != MILENA_OK ||
+            milena_parse_double(dataset->rows[r][quantity_i], &quantity) != MILENA_OK) {
             summary->rows_rejected++;
             continue;
         }
@@ -242,8 +242,8 @@ ManoStatus analysis_sales(const Dataset *dataset,
 
     FILE *out = fopen(output_json, "wb");
     if (!out) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir salida JSON");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir salida JSON");
+        return MILENA_ERR_IO;
     }
     fprintf(out, "{\n  \"analisis\": ");
     write_json_string(out, "ventas");
@@ -256,23 +256,23 @@ ManoStatus analysis_sales(const Dataset *dataset,
     bool io_error = ferror(out) != 0;
     if (fclose(out) != 0) io_error = true;
     if (io_error) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "Error escribiendo salida JSON");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "Error escribiendo salida JSON");
+        return MILENA_ERR_IO;
     }
     (void)date_i;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 bool analysis_ventas(const Dataset *dataset, const char *date_column,
                      const char *price_column, const char *quantity_column,
                      const char *output_json) {
     SalesSummary summary;
-    ManoError error;
-    ManoStatus status = analysis_sales(dataset, date_column, price_column,
+    MilenaError error;
+    MilenaStatus status = analysis_sales(dataset, date_column, price_column,
                                        quantity_column, output_json,
                                        &summary, &error);
-    if (status != MANO_OK) {
-        mano_error_print(&error, stderr);
+    if (status != MILENA_OK) {
+        milena_error_print(&error, stderr);
         return false;
     }
     printf("Total: %.2f | Promedio: %.2f | Máxima: %.2f | Mínima: %.2f | Usadas: %zu | Rechazadas: %zu\n",

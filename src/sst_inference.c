@@ -56,13 +56,13 @@ static int compare_double(const void *left, const void *right) {
     return a < b ? -1 : (a > b ? 1 : 0);
 }
 
-ManoStatus sst_poisson_rate_interval(size_t events, double exposure,
+MilenaStatus sst_poisson_rate_interval(size_t events, double exposure,
                                      double factor, double z_value,
                                      SstPoissonInterval *result,
-                                     ManoError *error) {
+                                     MilenaError *error) {
     if (!result || !isfinite(exposure) || !isfinite(factor) ||
         !isfinite(z_value) || exposure <= 0.0 || factor <= 0.0 || z_value <= 0.0) {
-        return MANO_ERR_ARGUMENT;
+        return MILENA_ERR_ARGUMENT;
     }
     memset(result, 0, sizeof(*result));
     result->events = events;
@@ -76,21 +76,21 @@ ManoStatus sst_poisson_rate_interval(size_t events, double exposure,
     if (events == 0) result->upper = z_value / exposure * factor;
     result->approximate = true;
     if (!isfinite(result->lower) || !isfinite(result->upper)) {
-        mano_error_set(error, MANO_ERR_OVERFLOW, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
                        "Intervalo Poisson no finito");
-        return MANO_ERR_OVERFLOW;
+        return MILENA_ERR_OVERFLOW;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_poisson_exact_interval(size_t events, double exposure,
+MilenaStatus sst_poisson_exact_interval(size_t events, double exposure,
                                       double factor, double confidence_level,
                                       SstPoissonInterval *result,
-                                      ManoError *error) {
+                                      MilenaError *error) {
     if (!result || !isfinite(exposure) || !isfinite(factor) ||
         !isfinite(confidence_level) || exposure <= 0.0 || factor <= 0.0 ||
         confidence_level <= 0.0 || confidence_level >= 1.0) {
-        return MANO_ERR_ARGUMENT;
+        return MILENA_ERR_ARGUMENT;
     }
     memset(result, 0, sizeof(*result));
     double alpha = 1.0 - confidence_level;
@@ -104,29 +104,29 @@ ManoStatus sst_poisson_exact_interval(size_t events, double exposure,
     result->upper = upper_lambda / exposure * factor;
     result->approximate = upper_lambda > 700.0;
     if (!isfinite(result->lower) || !isfinite(result->upper)) {
-        mano_error_set(error, MANO_ERR_OVERFLOW, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
                        "Intervalo Poisson no finito");
-        return MANO_ERR_OVERFLOW;
+        return MILENA_ERR_OVERFLOW;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_risk_ratio_odds_ratio(size_t exposed_events,
+MilenaStatus sst_risk_ratio_odds_ratio(size_t exposed_events,
                                       size_t exposed_non_events,
                                       size_t control_events,
                                       size_t control_non_events,
                                       SstRiskMeasure *result,
-                                      ManoError *error) {
-    if (!result) return MANO_ERR_ARGUMENT;
+                                      MilenaError *error) {
+    if (!result) return MILENA_ERR_ARGUMENT;
     memset(result, 0, sizeof(*result));
     double a = (double)exposed_events;
     double b = (double)exposed_non_events;
     double c = (double)control_events;
     double d = (double)control_non_events;
     if (a + b <= 0.0 || c + d <= 0.0) {
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
                        "Grupos insuficientes para riesgo relativo");
-        return MANO_ERR_DATA;
+        return MILENA_ERR_DATA;
     }
     if (a == 0.0 || b == 0.0 || c == 0.0 || d == 0.0) {
         a += 0.5; b += 0.5; c += 0.5; d += 0.5;
@@ -150,28 +150,28 @@ ManoStatus sst_risk_ratio_odds_ratio(size_t exposed_events,
     result->or_upper = exp(log(result->odds_ratio) + z * se_or);
     result->valid = isfinite(result->relative_risk) && isfinite(result->odds_ratio);
     if (!result->valid) {
-        mano_error_set(error, MANO_ERR_OVERFLOW, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
                        "Riesgo relativo no finito");
-        return MANO_ERR_OVERFLOW;
+        return MILENA_ERR_OVERFLOW;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_mann_whitney_u(const double *first, size_t n_first,
+MilenaStatus sst_mann_whitney_u(const double *first, size_t n_first,
                               const double *second, size_t n_second,
                               SstMannWhitneyResult *result,
-                              ManoError *error) {
+                              MilenaError *error) {
     if (!first || !second || !result || n_first == 0 || n_second == 0) {
-        return MANO_ERR_ARGUMENT;
+        return MILENA_ERR_ARGUMENT;
     }
     RankedValue *items = (RankedValue *)calloc(n_first + n_second, sizeof(*items));
-    if (!items) return MANO_ERR_MEMORY;
+    if (!items) return MILENA_ERR_MEMORY;
     for (size_t i = 0; i < n_first; i++) {
-        if (!isfinite(first[i])) { free(items); return MANO_ERR_TYPE; }
+        if (!isfinite(first[i])) { free(items); return MILENA_ERR_TYPE; }
         items[i].value = first[i]; items[i].group = 0;
     }
     for (size_t i = 0; i < n_second; i++) {
-        if (!isfinite(second[i])) { free(items); return MANO_ERR_TYPE; }
+        if (!isfinite(second[i])) { free(items); return MILENA_ERR_TYPE; }
         items[n_first + i].value = second[i]; items[n_first + i].group = 1;
     }
     size_t total = n_first + n_second;
@@ -199,16 +199,16 @@ ManoStatus sst_mann_whitney_u(const double *first, size_t n_first,
     result->approximate = true;
     free(items);
     (void)error;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_wilcoxon_signed_rank(const double *before, const double *after,
+MilenaStatus sst_wilcoxon_signed_rank(const double *before, const double *after,
                                     size_t count, SstWilcoxonResult *result,
-                                    ManoError *error) {
-    if (!before || !after || !result || count == 0) return MANO_ERR_ARGUMENT;
+                                    MilenaError *error) {
+    if (!before || !after || !result || count == 0) return MILENA_ERR_ARGUMENT;
     double *absolute = (double *)calloc(count, sizeof(*absolute));
     int *signs = (int *)calloc(count, sizeof(*signs));
-    if (!absolute || !signs) { free(absolute); free(signs); return MANO_ERR_MEMORY; }
+    if (!absolute || !signs) { free(absolute); free(signs); return MILENA_ERR_MEMORY; }
     size_t n = 0;
     for (size_t i = 0; i < count; i++) {
         if (!isfinite(before[i]) || !isfinite(after[i])) continue;
@@ -220,12 +220,12 @@ ManoStatus sst_wilcoxon_signed_rank(const double *before, const double *after,
     }
     if (n == 0) {
         free(absolute); free(signs);
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
                        "Sin diferencias no nulas para Wilcoxon");
-        return MANO_ERR_DATA;
+        return MILENA_ERR_DATA;
     }
     double *sorted = (double *)malloc(n * sizeof(*sorted));
-    if (!sorted) { free(absolute); free(signs); return MANO_ERR_MEMORY; }
+    if (!sorted) { free(absolute); free(signs); return MILENA_ERR_MEMORY; }
     memcpy(sorted, absolute, n * sizeof(*sorted));
     qsort(sorted, n, sizeof(*sorted), compare_double);
     double signed_rank = 0.0;
@@ -242,7 +242,7 @@ ManoStatus sst_wilcoxon_signed_rank(const double *before, const double *after,
     result->p_value = two_sided_normal_p(result->z);
     result->approximate = true;
     free(sorted); free(absolute); free(signs);
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 double sst_chi_square_approx_pvalue(double statistic, size_t degrees_of_freedom) {

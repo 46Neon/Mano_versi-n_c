@@ -1,6 +1,6 @@
-# Contribuir a Mano
+# Contribuir a Milena
 
-Gracias por tu interés en Mano. Las contribuciones son bienvenidas mediante Pull Requests.
+Gracias por tu interés en Milena. Las contribuciones son bienvenidas mediante Pull Requests.
 
 ## Flujo recomendado
 

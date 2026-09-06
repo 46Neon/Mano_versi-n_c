@@ -1,20 +1,22 @@
-# Mano SST
+# Milena
 
-Mano es un lenguaje y motor pequeño escrito en C17 para analizar datos SST existentes. Su objetivo es detectar patrones, tendencias, distribuciones y comportamientos estadísticos que puedan apoyar la prevención de accidentes laborales.
+Milena es un lenguaje y motor de análisis de datos escrito en C17. Su objetivo es trabajar con datos generales de forma reproducible: cargar tablas, validar tipos y calidad, transformar columnas, calcular estadísticas y generar reportes que puedan ser revisados por personas y por otras herramientas.
 
-> **Alcance:** Mano es una herramienta tecnológica de apoyo. No sustituye al profesional de seguridad y salud laboral, una investigación de accidentes, un sistema oficial, una evaluación legal ni la toma de decisiones profesionales.
+El soporte SST es el primer dominio desarrollado, no el límite del proyecto. La lógica financiera, los análisis estadísticos generales y los módulos opcionales de inteligencia artificial se incorporarán de forma progresiva. La visualización no forma parte del núcleo actual.
 
-## Qué puede hacer
+> **Alcance:** Milena es una herramienta de apoyo. No sustituye a profesionales, auditorías, investigaciones, sistemas oficiales, asesoría legal, contable o médica, ni convierte correlaciones en causalidad.
 
-- Cargar CSV con límites operativos para datasets pequeños.
-- Validar columnas, valores numéricos, categorías y variables binarias.
-- Analizar incidentes, severidad, días de incapacidad y exposición.
-- Comparar áreas, turnos, riesgos y grupos.
-- Detectar patrones, valores inválidos y señales estadísticas.
-- Generar reportes JSON reproducibles para revisión profesional.
-- Mantener advertencias explícitas sobre aproximaciones y causalidad.
+## Estado actual
 
-Mano analiza datos que ya existen; no determina por sí sola la causa de un accidente ni recomienda medidas legales automáticamente.
+- Carga y validación de CSV con límites operativos.
+- Perfilado de columnas, valores numéricos, categorías y variables binarias.
+- Limpieza de nulos y duplicados.
+- Estadística descriptiva, correlación, histogramas, normalidad aproximada y pruebas de contingencia.
+- Módulos iniciales para análisis SST.
+- Reportes JSON reproducibles.
+- Compilación C17 con advertencias estrictas y pruebas automatizadas.
+
+Milena analiza datos existentes y debe mostrar advertencias cuando un método sea aproximado o cuando no permita extraer conclusiones causales.
 
 ## Compilar
 
@@ -33,21 +35,21 @@ La compilación utiliza C17 y advertencias estrictas. En un entorno de validaci�
 ## Ejecutar
 
 ```bash
-./mano analizar mi_archivo.csv reporte_mano.json
-./mano perfil mi_archivo.csv perfil.json
-./mano run examples/clasificacion_binaria.mano
-./mano inspect mi_archivo.csv
+./milena analizar mi_archivo.csv reporte_milena.json
+./milena perfil mi_archivo.csv perfil.json
+./milena run examples/clasificacion_binaria.mano
+./milena inspect mi_archivo.csv
 ```
 
 Un script produce el reporte general indicado en `.exportar`. Si contiene operaciones SST, también produce un archivo con el sufijo:
 
 ```text
-reporte_mano.json.sst.json
+reporte_milena.json.sst.json
 ```
 
 ## Sintaxis de variables
 
-```mano
+```milena
 variable fecha fecha
 variable area categorica
 variable turno categorica
@@ -69,7 +71,7 @@ Tipos soportados:
 
 ## Operaciones de limpieza
 
-```mano
+```milena
 #nulos("eliminar")
 #duplicados("eliminar")
 #total("precio * cantidad")
@@ -79,7 +81,7 @@ Tipos soportados:
 
 ## Operaciones estadísticas SST
 
-```mano
+```milena
 #perfil_numerico("severidad")
 #perfil_avanzado("severidad")
 #histograma("severidad", bins = 5)
@@ -107,10 +109,10 @@ Las tasas siempre deben interpretarse junto con su denominador, factor, periodo 
 
 ## Comandos no soportados
 
-Un comando desconocido no se ignora. Mano produce un error explícito para evitar informes aparentemente completos:
+Un comando desconocido no se ignora. Milena produce un error explícito para evitar informes aparentemente completos:
 
 ```text
-UNSUPPORTED: Comando Mano no reconocido; no se ignorará silenciosamente
+UNSUPPORTED: Comando Milena no reconocido; no se ignorará silenciosamente
 ```
 
 Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.mano` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
@@ -157,7 +159,7 @@ máximo de columnas:          70
 máximo aproximado por campo: 1 MiB
 ```
 
-Estos límites hacen que el almacenamiento actual en memoria sea razonable para el alcance inicial. Mano no es todavía un sistema distribuido, un motor columnar ni una plataforma Big Data.
+Estos límites hacen que el almacenamiento actual en memoria sea razonable para el alcance inicial. Milena no es todavía un sistema distribuido, un motor columnar ni una plataforma Big Data.
 
 ## Arquitectura SST
 
@@ -166,7 +168,7 @@ CSV
  ↓
 calidad y validación
  ↓
-esquema y script Mano
+esquema y script Milena
  ↓
 operación estadística
  ↓
@@ -199,7 +201,7 @@ Módulos principales:
 ```text
 Datos SST existentes
         ↓
-Mano detecta patrones y señales
+Milena detecta patrones y señales
         ↓
 Profesional SST interpreta y valida
         ↓
@@ -208,7 +210,7 @@ Investigación preventiva
 Medidas de control y seguimiento
 ```
 
-Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales, distribución de severidad, diferencias entre turnos y posibles relaciones entre variables. No determina responsabilidades, no prueba causalidad y no reemplaza entrevistas, inspecciones, evidencias ni métodos formales de investigación.
+Milena puede ayudar a identificar áreas con mayor frecuencia, cambios temporales, distribución de severidad, diferencias entre turnos y posibles relaciones entre variables. No determina responsabilidades, no prueba causalidad y no reemplaza entrevistas, inspecciones, evidencias ni métodos formales de investigación.
 
 ## Limitaciones actuales
 
@@ -224,34 +226,34 @@ Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales,
 
 ## Instalación en Termux mediante APT
 
-Una vez publicado el repositorio APT, la instalación para una persona usuaria no requiere clonar el código ni compilar Mano. Se necesita la dirección pública del sitio APT configurado para la distribución y la clave pública del repositorio.
+Una vez publicado el repositorio APT, la instalación para una persona usuaria no requiere clonar el código ni compilar Milena. Se necesita la dirección pública del sitio APT configurado para la distribución y la clave pública del repositorio.
 
 ```bash
 pkg install curl gnupg
 mkdir -p "$PREFIX/etc/apt/keyrings" "$PREFIX/etc/apt/sources.list.d"
 NETLIFY_REPO_URL="PEGA_AQUI_LA_DIRECCION_PUBLICA_DEL_REPOSITORIO"
-curl -fsSL "$NETLIFY_REPO_URL/mano-archive-keyring.asc" \
+curl -fsSL "$NETLIFY_REPO_URL/milena-archive-keyring.asc" \
   | gpg --dearmor \
-  > "$PREFIX/etc/apt/keyrings/mano-archive.gpg"
+  > "$PREFIX/etc/apt/keyrings/milena-archive.gpg"
 printf 'deb [signed-by=%s] %s stable main\n' \
-  "$PREFIX/etc/apt/keyrings/mano-archive.gpg" \
+  "$PREFIX/etc/apt/keyrings/milena-archive.gpg" \
   "$NETLIFY_REPO_URL" \
-  > "$PREFIX/etc/apt/sources.list.d/mano.list"
+  > "$PREFIX/etc/apt/sources.list.d/milena.list"
 apt-get update --allow-releaseinfo-change
-pkg install mano
+pkg install milena
 ```
 
 Para actualizar:
 
 ```bash
 pkg update
-pkg upgrade mano
+pkg upgrade milena
 ```
 
-Para desinstalar solamente Mano:
+Para desinstalar solamente Milena:
 
 ```bash
-apt remove mano
+apt remove milena
 ```
 
 La dirección pública del repositorio debe copiarse desde el despliegue de Netlify; no debe confundirse con el panel privado de administración.
@@ -267,7 +269,7 @@ El flujo de empaquetado se encuentra en `packaging/termux/`. La primera fase gen
 Para ofrecer una instalación pública mediante:
 
 ```bash
-pkg install mano
+pkg install milena
 ```
 
 El repositorio APT se genera con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Actions lo publica en un sitio estático de Netlify; la clave privada GPG permanece en los secretos de Actions.
@@ -278,15 +280,16 @@ El canal Debian/Ubuntu está en `packaging/debian/` y el canal Windows en `packa
 
 ## Próximas mejoras
 
-1. Completar la integración de inferencia con `.mano`.
-2. Añadir huellas SHA-256 de datos, scripts y reportes.
-3. Instrumentar completamente logger y métricas.
-4. Agregar pruebas estadísticas contra valores de referencia.
-5. Añadir análisis temporal y comparaciones antes/después.
-6. Crear una matriz configurable de peligros, controles y señales preventivas.
-7. Incorporar exportación tabular y documentación de métodos.
-8. Ejecutar validación con GCC, Clang, ASan, UBSan y pruebas de memoria.
+La hoja de ruta completa está en [`PLAN_MILENA.md`](PLAN_MILENA.md). El orden acordado es:
+
+1. Consolidar la identidad Milena y la compatibilidad de la sintaxis actual.
+2. Ampliar el núcleo de tablas y análisis de datos generales.
+3. Incorporar lógica financiera con representación monetaria segura.
+4. Mejorar rendimiento, memoria y arquitectura modular.
+5. Añadir módulos de inteligencia artificial reproducibles y explicables.
+6. Revisar la sintaxis cuando el modelo de datos esté estable.
+7. Aumentar documentación, colaboración, adopción y madurez antes de solicitar nuevamente Termux.
 
 ## Nota de responsabilidad
 
-Mano es una solución tecnológica de apoyo para análisis de datos SST y prevención. Las conclusiones que afecten la seguridad de trabajadores deben ser revisadas por personal competente y complementadas con la evidencia operativa correspondiente.
+Milena es una solución tecnológica de apoyo para análisis de datos SST y prevención. Las conclusiones que afecten la seguridad de trabajadores deben ser revisadas por personal competente y complementadas con la evidencia operativa correspondiente.

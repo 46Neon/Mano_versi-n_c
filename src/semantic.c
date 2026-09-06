@@ -10,11 +10,11 @@ void semantic_init(SemanticAnalyzer *analyzer, ASTNode *ast) {
     analyzer->ast = ast;
     analyzer->symbols = symbol_table_create();
     analyzer->has_error = false;
-    mano_error_init(&analyzer->error);
+    milena_error_init(&analyzer->error);
 }
 
 static void semantic_error(SemanticAnalyzer *analyzer, const char *msg, int line, int column) {
-    mano_error_set(&analyzer->error, MANO_ERROR_SEMANTIC, msg, line, column);
+    milena_error_set(&analyzer->error, MILENA_ERROR_SEMANTIC, msg, line, column);
     analyzer->has_error = true;
 }
 

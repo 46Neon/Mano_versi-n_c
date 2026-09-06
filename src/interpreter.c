@@ -9,7 +9,7 @@ bool interpreter_init(Interpreter *interpreter, ASTNode *ast) {
     
     interpreter->dataset = NULL;
     interpreter->has_error = false;
-    mano_error_init(&interpreter->error);
+    milena_error_init(&interpreter->error);
     
     return true;
 }
@@ -43,7 +43,7 @@ static bool interpreter_execute_bloque(Interpreter *interpreter, ASTNode *node) 
 static bool interpreter_execute_cargar(Interpreter *interpreter, ASTNode *node) {
     if (!node || !node->value) {
         interpreter->has_error = true;
-        mano_error_set(&interpreter->error, MANO_ERROR_RUNTIME,
+        milena_error_set(&interpreter->error, MILENA_ERROR_RUNTIME,
                       "Cargar requiere nombre de archivo", 0, 0);
         return false;
     }
@@ -56,14 +56,14 @@ static bool interpreter_execute_cargar(Interpreter *interpreter, ASTNode *node) 
     interpreter->dataset = (Dataset *)calloc(1, sizeof(Dataset));
     if (!interpreter->dataset) {
         interpreter->has_error = true;
-        mano_error_set(&interpreter->error, MANO_ERROR_MEMORY,
+        milena_error_set(&interpreter->error, MILENA_ERROR_MEMORY,
                       "No se pudo crear dataset", 0, 0);
         return false;
     }
     
     if (!dataset_cargar_csv(interpreter->dataset, node->value)) {
         interpreter->has_error = true;
-        mano_error_set(&interpreter->error, MANO_ERROR_IO,
+        milena_error_set(&interpreter->error, MILENA_ERROR_IO,
                       "No se pudo cargar CSV", 0, 0);
         return false;
     }
@@ -78,14 +78,14 @@ static bool interpreter_execute_cargar(Interpreter *interpreter, ASTNode *node) 
 static bool interpreter_execute_exportar(Interpreter *interpreter, ASTNode *node) {
     if (!interpreter->dataset || !node->value) {
         interpreter->has_error = true;
-        mano_error_set(&interpreter->error, MANO_ERROR_RUNTIME,
+        milena_error_set(&interpreter->error, MILENA_ERROR_RUNTIME,
                       "No hay dataset o nombre de archivo para exportar", 0, 0);
         return false;
     }
     
     if (!dataset_guardar_json(interpreter->dataset, node->value)) {
         interpreter->has_error = true;
-        mano_error_set(&interpreter->error, MANO_ERROR_IO,
+        milena_error_set(&interpreter->error, MILENA_ERROR_IO,
                       "No se pudo exportar JSON", 0, 0);
         return false;
     }

@@ -1,5 +1,5 @@
-#ifndef MANO_MODULE_H
-#define MANO_MODULE_H
+#ifndef MILENA_MODULE_H
+#define MILENA_MODULE_H
 
 #include "common.h"
 #include "ast.h"

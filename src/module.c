@@ -13,7 +13,7 @@ ModuleLoader* module_loader_create(void) {
     // Agregar ruta por defecto
     module_add_search_path(loader, ".");
     module_add_search_path(loader, "./modules");
-    module_add_search_path(loader, "/usr/local/lib/mano");
+    module_add_search_path(loader, "/usr/local/lib/milena");
     
     return loader;
 }

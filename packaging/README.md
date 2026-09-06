@@ -1,11 +1,11 @@
-# Empaquetado de Mano
+# Empaquetado de Milena
 
 El código fuente y el empaquetado se mantienen conceptualmente separados:
 
-- `Mano_versi-n_c`: motor, lenguaje, módulos SST y pruebas.
+- `Milena_versi-n_c`: motor, lenguaje, módulos SST y pruebas.
 - `packaging/termux`: construcción del paquete para Termux.
 
-El primer objetivo es construir y probar un `.deb` nativo de Termux. Todavía no se publica un repositorio APT ni se afirma que `pkg install mano` esté disponible para terceros.
+El primer objetivo es construir y probar un `.deb` nativo de Termux. Todavía no se publica un repositorio APT ni se afirma que `pkg install milena` esté disponible para terceros.
 
 ## Plataformas
 

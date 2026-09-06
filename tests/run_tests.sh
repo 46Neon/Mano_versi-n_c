@@ -12,7 +12,7 @@ fecha,precio,cantidad
 2026-01-03,2,4
 CSV
 
-./mano analizar "$tmp_dir/ventas.csv" "$tmp_dir/test-output.json" >/dev/null
+./milena analizar "$tmp_dir/ventas.csv" "$tmp_dir/test-output.json" >/dev/null
 test -s "$tmp_dir/test-output.json"
 grep -q '"total": 43' "$tmp_dir/test-output.json"
 
@@ -34,7 +34,7 @@ sed \
   "$project_dir/examples/clasificacion_binaria.mano" \
   > "$tmp_dir/clasificacion_binaria.mano"
 
-./mano run "$tmp_dir/clasificacion_binaria.mano" >/dev/null
+./milena run "$tmp_dir/clasificacion_binaria.mano" >/dev/null
 test -s "$tmp_dir/reporte_clientes.json"
 test -s "$tmp_dir/reporte_clientes.json.sst.json"
 grep -q '"salidas_binarias"' "$tmp_dir/reporte_clientes.json"
@@ -43,6 +43,6 @@ grep -q '"histograma"' "$tmp_dir/reporte_clientes.json.sst.json"
 grep -q '"pearson"' "$tmp_dir/reporte_clientes.json.sst.json"
 grep -q '"normalidad"' "$tmp_dir/reporte_clientes.json.sst.json"
 
-./mano perfil "$tmp_dir/clientes.csv" "$tmp_dir/perfil.json" >/dev/null
+./milena perfil "$tmp_dir/clientes.csv" "$tmp_dir/perfil.json" >/dev/null
 test -s "$tmp_dir/perfil.json"
 printf 'OK: pruebas con datos sintéticos temporales completadas\n'

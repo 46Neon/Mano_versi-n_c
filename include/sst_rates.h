@@ -1,5 +1,5 @@
-#ifndef MANO_SST_RATES_H
-#define MANO_SST_RATES_H
+#ifndef MILENA_SST_RATES_H
+#define MILENA_SST_RATES_H
 
 #include "common.h"
 #include "sst_model.h"
@@ -13,10 +13,10 @@ typedef struct {
     bool valid;
 } SstRateResult;
 
-ManoStatus sst_rate_from_events(const SstEventList *events, double factor,
-                                SstRateResult *result, ManoError *error);
-ManoStatus sst_rate_from_counts(size_t incidents, double exposure_hours,
+MilenaStatus sst_rate_from_events(const SstEventList *events, double factor,
+                                SstRateResult *result, MilenaError *error);
+MilenaStatus sst_rate_from_counts(size_t incidents, double exposure_hours,
                                 double factor, SstRateResult *result,
-                                ManoError *error);
+                                MilenaError *error);
 
 #endif

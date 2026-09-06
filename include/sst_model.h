@@ -1,5 +1,5 @@
-#ifndef MANO_SST_MODEL_H
-#define MANO_SST_MODEL_H
+#ifndef MILENA_SST_MODEL_H
+#define MILENA_SST_MODEL_H
 
 #include "common.h"
 #include "sst_dates.h"
@@ -24,7 +24,7 @@ typedef enum {
 
 typedef struct {
     char *id_evento;
-    ManoDate fecha;
+    MilenaDate fecha;
     char *area;
     char *cargo;
     char *turno;
@@ -52,8 +52,8 @@ void sst_event_init(SstEvent *event);
 void sst_event_destroy(SstEvent *event);
 void sst_event_list_init(SstEventList *list);
 void sst_event_list_destroy(SstEventList *list);
-ManoStatus sst_event_list_append(SstEventList *list, const SstEvent *event,
-                                 ManoError *error);
+MilenaStatus sst_event_list_append(SstEventList *list, const SstEvent *event,
+                                 MilenaError *error);
 SstRiskType sst_risk_parse(const char *text);
 const char *sst_risk_name(SstRiskType risk);
 SstBinaryValue sst_binary_parse(const char *text);

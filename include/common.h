@@ -1,5 +1,5 @@
-#ifndef MANO_COMMON_H
-#define MANO_COMMON_H
+#ifndef MILENA_COMMON_H
+#define MILENA_COMMON_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,38 +12,38 @@
 #include <float.h>
 #include <math.h>
 
-#define MANO_VERSION "2.0.0-functional"
-#define MANO_ERROR_TEXT 512
+#define MILENA_VERSION "0.2.0-identity"
+#define MILENA_ERROR_TEXT 512
 
 typedef enum {
-    MANO_OK = 0,
-    MANO_ERR_ARGUMENT,
-    MANO_ERR_MEMORY,
-    MANO_ERR_IO,
-    MANO_ERR_PARSE,
-    MANO_ERR_DATA,
-    MANO_ERR_TYPE,
-    MANO_ERR_OVERFLOW,
-    MANO_ERR_UNSUPPORTED,
-    MANO_ERR_INTERNAL
-} ManoStatus;
+    MILENA_OK = 0,
+    MILENA_ERR_ARGUMENT,
+    MILENA_ERR_MEMORY,
+    MILENA_ERR_IO,
+    MILENA_ERR_PARSE,
+    MILENA_ERR_DATA,
+    MILENA_ERR_TYPE,
+    MILENA_ERR_OVERFLOW,
+    MILENA_ERR_UNSUPPORTED,
+    MILENA_ERR_INTERNAL
+} MilenaStatus;
 
 typedef struct {
-    ManoStatus code;
+    MilenaStatus code;
     size_t line;
     size_t column;
     size_t row;
-    char message[MANO_ERROR_TEXT];
-} ManoError;
+    char message[MILENA_ERROR_TEXT];
+} MilenaError;
 
-void mano_error_clear(ManoError *error);
-void mano_error_set(ManoError *error, ManoStatus code, size_t line,
+void milena_error_clear(MilenaError *error);
+void milena_error_set(MilenaError *error, MilenaStatus code, size_t line,
                     size_t column, size_t row, const char *message);
-const char *mano_status_name(ManoStatus status);
-char *mano_strdup(const char *text);
-bool mano_size_add(size_t a, size_t b, size_t *out);
-bool mano_size_mul(size_t a, size_t b, size_t *out);
-ManoStatus mano_parse_double(const char *text, double *value);
-void mano_error_print(const ManoError *error, FILE *stream);
+const char *milena_status_name(MilenaStatus status);
+char *milena_strdup(const char *text);
+bool milena_size_add(size_t a, size_t b, size_t *out);
+bool milena_size_mul(size_t a, size_t b, size_t *out);
+MilenaStatus milena_parse_double(const char *text, double *value);
+void milena_error_print(const MilenaError *error, FILE *stream);
 
 #endif

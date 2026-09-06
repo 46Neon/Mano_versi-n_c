@@ -1,5 +1,5 @@
-#ifndef MANO_INSTRUCTIONS_H
-#define MANO_INSTRUCTIONS_H
+#ifndef MILENA_INSTRUCTIONS_H
+#define MILENA_INSTRUCTIONS_H
 
 #include "common.h"
 

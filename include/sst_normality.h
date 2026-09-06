@@ -1,5 +1,5 @@
-#ifndef MANO_SST_NORMALITY_H
-#define MANO_SST_NORMALITY_H
+#ifndef MILENA_SST_NORMALITY_H
+#define MILENA_SST_NORMALITY_H
 
 #include "common.h"
 
@@ -14,8 +14,8 @@ typedef struct {
 } SstNormalityResult;
 
 /* Diagnóstico Jarque-Bera con aproximación chi-cuadrado de 2 grados de libertad. */
-ManoStatus sst_normality_test(const double *data, size_t n,
+MilenaStatus sst_normality_test(const double *data, size_t n,
                               SstNormalityResult *result,
-                              ManoError *error);
+                              MilenaError *error);
 
 #endif

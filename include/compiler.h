@@ -1,5 +1,5 @@
-#ifndef MANO_COMPILER_H
-#define MANO_COMPILER_H
+#ifndef MILENA_COMPILER_H
+#define MILENA_COMPILER_H
 
 #include "common.h"
 #include "ast.h"
@@ -10,7 +10,7 @@ typedef struct Compiler {
     ASTNode *ast;
     IRProgram *ir;
     SymbolTable *symbols;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
     bool has_error;
 } Compiler;
 

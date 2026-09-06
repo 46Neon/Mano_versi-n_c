@@ -1,5 +1,5 @@
-#ifndef MANO_ASSEMBLER_H
-#define MANO_ASSEMBLER_H
+#ifndef MILENA_ASSEMBLER_H
+#define MILENA_ASSEMBLER_H
 
 #include "common.h"
 #include "ir.h"

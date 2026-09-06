@@ -9,7 +9,7 @@ bool vm_init(VirtualMachine *vm, IRProgram *program) {
     vm->result = NULL;
     vm->running = true;
     vm->has_error = false;
-    mano_error_init(&vm->error);
+    milena_error_init(&vm->error);
     
     // Inicializar GC
     vm->gc = gc_create();
@@ -32,14 +32,14 @@ static bool vm_execute_instruction(VirtualMachine *vm, IRInstruction *ins) {
                 vm->dataset = (Dataset *)gc_alloc(vm->gc, sizeof(Dataset));
                 if (!vm->dataset) {
                     vm->has_error = true;
-                    mano_error_set(&vm->error, MANO_ERROR_MEMORY,
+                    milena_error_set(&vm->error, MILENA_ERROR_MEMORY,
                                   "No se pudo asignar dataset", 0, 0);
                     return false;
                 }
                 
                 if (!dataset_cargar_csv(vm->dataset, ins->arg1)) {
                     vm->has_error = true;
-                    mano_error_set(&vm->error, MANO_ERROR_IO,
+                    milena_error_set(&vm->error, MILENA_ERROR_IO,
                                   "No se pudo cargar CSV", 0, 0);
                     return false;
                 }
@@ -112,7 +112,7 @@ static bool vm_execute_instruction(VirtualMachine *vm, IRInstruction *ins) {
                     printf("VM: Datos exportados a %s\n", ins->arg1);
                 } else {
                     vm->has_error = true;
-                    mano_error_set(&vm->error, MANO_ERROR_IO,
+                    milena_error_set(&vm->error, MILENA_ERROR_IO,
                                   "No se pudo exportar JSON", 0, 0);
                     return false;
                 }

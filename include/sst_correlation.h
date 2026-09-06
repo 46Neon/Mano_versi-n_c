@@ -1,5 +1,5 @@
-#ifndef MANO_SST_CORRELATION_H
-#define MANO_SST_CORRELATION_H
+#ifndef MILENA_SST_CORRELATION_H
+#define MILENA_SST_CORRELATION_H
 
 #include "common.h"
 
@@ -11,7 +11,7 @@ typedef struct {
     bool warning_small_sample;
 } SstCorrelationResult;
 
-ManoStatus sst_pearson(const double *x, const double *y, size_t count,
-                       SstCorrelationResult *result, ManoError *error);
+MilenaStatus sst_pearson(const double *x, const double *y, size_t count,
+                       SstCorrelationResult *result, MilenaError *error);
 
 #endif

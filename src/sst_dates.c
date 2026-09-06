@@ -10,8 +10,8 @@ static unsigned days_in_month(int year, unsigned month) {
     return month >= 1 && month <= 12 ? days[month - 1] : 0;
 }
 
-ManoStatus sst_date_parse(const char *text, ManoDate *date, ManoError *error) {
-    if (!text || !date) return MANO_ERR_ARGUMENT;
+MilenaStatus sst_date_parse(const char *text, MilenaDate *date, MilenaError *error) {
+    if (!text || !date) return MILENA_ERR_ARGUMENT;
     date->year = 0;
     date->month = date->day = 0;
     date->valid = false;
@@ -21,17 +21,17 @@ ManoStatus sst_date_parse(const char *text, ManoDate *date, ManoError *error) {
     if (sscanf(text, "%d-%u-%u%c", &year, &month, &day, &extra) != 3 ||
         year < 1 || month < 1 || month > 12 || day < 1 ||
         day > days_in_month(year, month)) {
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0, "Fecha SST inválida; use YYYY-MM-DD");
-        return MANO_ERR_DATA;
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0, "Fecha SST inválida; use YYYY-MM-DD");
+        return MILENA_ERR_DATA;
     }
     date->year = year;
     date->month = month;
     date->day = day;
     date->valid = true;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-int sst_date_compare(const ManoDate *left, const ManoDate *right) {
+int sst_date_compare(const MilenaDate *left, const MilenaDate *right) {
     if (!left || !right || !left->valid || !right->valid) return 0;
     if (left->year != right->year) return left->year < right->year ? -1 : 1;
     if (left->month != right->month) return left->month < right->month ? -1 : 1;
@@ -39,11 +39,11 @@ int sst_date_compare(const ManoDate *left, const ManoDate *right) {
     return 0;
 }
 
-bool sst_date_is_future(const ManoDate *date, const ManoDate *reference) {
+bool sst_date_is_future(const MilenaDate *date, const MilenaDate *reference) {
     return sst_date_compare(date, reference) > 0;
 }
 
-int64_t sst_date_epoch_days(const ManoDate *date) {
+int64_t sst_date_epoch_days(const MilenaDate *date) {
     if (!date || !date->valid) return -1;
     int64_t y = date->year;
     int64_t m = (int64_t)date->month;
