@@ -886,7 +886,7 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
     milena_amortization_schedule_init(schedule);
     MilenaDecimal payment_decimal;
     MilenaStatus status = milena_annuity_payment(&payment_decimal, &principal.amount,
-                                                  periodic_rate, periods, 12,
+                                                  periodic_rate, periods, 2,
                                                   MILENA_ROUND_HALF_EVEN, error);
     if (status != MILENA_OK) return status;
     MilenaDecimal balance = principal.amount;
