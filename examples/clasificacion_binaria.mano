@@ -2,7 +2,7 @@
     #datos
     #estadistica
 
-    dataset cargar datos("datos/clientes_binarios.csv")
+        dataset cargar datos("datos/tu_archivo.csv")
 
     variable edad numerica
     variable ciudad categorica

@@ -2,7 +2,7 @@
     #datos
     #estadistica
 
-    dataset cargar datos("datos/ventas.csv")
+    dataset cargar datos("datos/tu_archivo.csv")
 
     .limpiar dataset {
         #nulos("eliminar")
@@ -22,6 +22,6 @@
 
     .exportar {
         dataset,
-        ("reporte.json")
+        ("reporte_ventas.json")
     }
 }

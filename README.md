@@ -33,16 +33,16 @@ La compilación utiliza C17 y advertencias estrictas. En un entorno de validaci�
 ## Ejecutar
 
 ```bash
-./mano analizar datos/ventas.csv reporte.json
-./mano perfil datos/clientes_binarios.csv perfil.json
+./mano analizar mi_archivo.csv reporte_mano.json
+./mano perfil mi_archivo.csv perfil.json
 ./mano run examples/clasificacion_binaria.mano
-./mano inspect datos/clientes_binarios.csv
+./mano inspect mi_archivo.csv
 ```
 
 Un script produce el reporte general indicado en `.exportar`. Si contiene operaciones SST, también produce un archivo con el sufijo:
 
 ```text
-reporte.json.sst.json
+reporte_mano.json.sst.json
 ```
 
 ## Sintaxis de variables
