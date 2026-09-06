@@ -120,6 +120,13 @@ int main(void) {
                                    &internal_rate, &error), &error);
     assert(internal_rate.scale >= 0 && internal_rate.scale <= 2);
 
+    MilenaAmortizationSchedule quarterly;
+    expect_ok(milena_amortization_build_frequency(&quarterly, usd_a, &rate, 2, end,
+                                                  MILENA_PAYMENT_QUARTERLY, &error), &error);
+    assert(quarterly.count == 2);
+    assert(quarterly.rows[1].date.month == 5);
+    milena_amortization_schedule_destroy(&quarterly);
+
     MilenaAmortizationSchedule schedule;
     expect_ok(milena_amortization_build(&schedule, usd_a, &rate, 2, end, &error), &error);
     assert(schedule.count == 2);

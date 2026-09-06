@@ -202,6 +202,14 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
                                         uint32_t periods,
                                         MilenaDate first_payment_date,
                                         MilenaError *error);
+MilenaStatus milena_amortization_build_frequency(
+    MilenaAmortizationSchedule *schedule,
+    MilenaMoney principal,
+    const MilenaRate *periodic_rate,
+    uint32_t periods,
+    MilenaDate first_payment_date,
+    MilenaPaymentFrequency frequency,
+    MilenaError *error);
 
 #ifdef __cplusplus
 }

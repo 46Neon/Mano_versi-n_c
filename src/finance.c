@@ -898,12 +898,14 @@ MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
     return milena_date_add_months(out, date, periods * multiplier, error);
 }
 
-MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
-                                        MilenaMoney principal,
-                                        const MilenaRate *periodic_rate,
-                                        uint32_t periods,
-                                        MilenaDate first_payment_date,
-                                        MilenaError *error) {
+MilenaStatus milena_amortization_build_frequency(
+    MilenaAmortizationSchedule *schedule,
+    MilenaMoney principal,
+    const MilenaRate *periodic_rate,
+    uint32_t periods,
+    MilenaDate first_payment_date,
+    MilenaPaymentFrequency frequency,
+    MilenaError *error) {
     if (!schedule || periods == 0 || principal.amount.coefficient < 0 ||
         require_periodic_rate(periodic_rate, error) != MILENA_OK) {
         finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de amortización inválidos");
@@ -918,7 +920,8 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
     MilenaDecimal balance = principal.amount;
     for (uint32_t period = 1; period <= periods; period++) {
         MilenaDate date;
-        status = milena_date_add_months(&date, first_payment_date, period - 1u, error);
+        status = milena_date_add_period(&date, first_payment_date, period - 1u,
+                                        frequency, error);
         if (status != MILENA_OK) break;
         MilenaDecimal interest;
         MilenaDecimal principal_paid;
@@ -962,4 +965,15 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
     }
     if (status != MILENA_OK) milena_amortization_schedule_destroy(schedule);
     return status;
+}
+
+MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
+                                        MilenaMoney principal,
+                                        const MilenaRate *periodic_rate,
+                                        uint32_t periods,
+                                        MilenaDate first_payment_date,
+                                        MilenaError *error) {
+    return milena_amortization_build_frequency(schedule, principal, periodic_rate,
+                                                periods, first_payment_date,
+                                                MILENA_PAYMENT_MONTHLY, error);
 }
