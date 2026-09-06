@@ -1,0 +1,14 @@
+Package: mano
+Version: 0.1.0
+Architecture: amd64
+Maintainer: Mano SST <maintainers@mano.invalid>
+Filename: dist/apt/pool/main/m/mano/mano_0.1.0_amd64.deb
+Size: 39310
+MD5sum: 6db86c0bb50aeecb8e86d61baced76c6
+SHA1: 3ce23bf1780cdf7fe0b3af56bc159b9ec2a22ed3
+SHA256: 62c5d3ca433580cd12e69b12d0b6afea754eac99125329206861d877f699e986
+Section: science
+Priority: optional
+Description: Mano SST data analysis language
+ Mano detects statistical patterns in existing occupational safety and health data.
+
