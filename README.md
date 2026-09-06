@@ -18,7 +18,7 @@ El soporte SST es el primer dominio desarrollado, no el límite del proyecto. La
 
 Milena analiza datos existentes y debe mostrar advertencias cuando un método sea aproximado o cuando no permita extraer conclusiones causales.
 
-La extensión recomendada para los scripts es `.milena`. Durante la transición, el cargador de módulos también acepta `.mano` para conservar compatibilidad con scripts anteriores.
+La extensión oficial para los scripts y módulos de Milena es `.milena`. Los archivos nuevos y los ejemplos deben utilizar exclusivamente esta extensión.
 
 ## Compilar
 

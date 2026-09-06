@@ -50,8 +50,8 @@ Module* module_load(ModuleLoader *loader, const char *name) {
         }
     }
     
-    // Buscar primero módulos nuevos .milena y aceptar .mano durante la transición.
-    static const char *extensions[] = { ".milena", ".mano" };
+    // Milena utiliza exclusivamente la extensión .milena para sus módulos.
+    static const char *extensions[] = { ".milena" };
     char filename[512];
     for (size_t i = 0; i < loader->path_count; i++) {
         for (size_t extension = 0;
