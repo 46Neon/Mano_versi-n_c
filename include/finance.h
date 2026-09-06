@@ -77,6 +77,67 @@ MilenaStatus milena_money_sub(MilenaMoney *out, const MilenaMoney *left,
 MilenaStatus milena_rate_init(MilenaRate *out, MilenaDecimal value,
                               MilenaRateKind kind, uint32_t periods_per_year,
                               MilenaError *error);
+MilenaStatus milena_rate_nominal_to_effective(MilenaDecimal *out,
+                                               const MilenaRate *nominal,
+                                               int32_t output_scale,
+                                               MilenaRoundingMode mode,
+                                               MilenaError *error);
+MilenaStatus milena_decimal_pow_uint(MilenaDecimal *out,
+                                     const MilenaDecimal *base,
+                                     uint32_t exponent,
+                                     MilenaError *error);
+MilenaStatus milena_future_value(MilenaDecimal *out,
+                                 const MilenaDecimal *principal,
+                                 const MilenaRate *periodic_rate,
+                                 uint32_t periods,
+                                 MilenaError *error);
+MilenaStatus milena_present_value(MilenaDecimal *out,
+                                  const MilenaDecimal *future_value,
+                                  const MilenaRate *periodic_rate,
+                                  uint32_t periods,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaError *error);
+MilenaStatus milena_simple_interest(MilenaDecimal *out,
+                                    const MilenaDecimal *principal,
+                                    const MilenaRate *periodic_rate,
+                                    uint32_t periods,
+                                    MilenaError *error);
+MilenaStatus milena_compound_interest(MilenaDecimal *out,
+                                      const MilenaDecimal *principal,
+                                      const MilenaRate *periodic_rate,
+                                      uint32_t periods,
+                                      MilenaError *error);
+MilenaStatus milena_annuity_payment(MilenaDecimal *out,
+                                    const MilenaDecimal *principal,
+                                    const MilenaRate *periodic_rate,
+                                    uint32_t periods,
+                                    int32_t output_scale,
+                                    MilenaRoundingMode mode,
+                                    MilenaError *error);
+
+typedef struct {
+    int32_t year;
+    uint8_t month;
+    uint8_t day;
+} MilenaDate;
+
+typedef enum {
+    MILENA_DAY_COUNT_ACTUAL_365 = 0,
+    MILENA_DAY_COUNT_ACTUAL_360
+} MilenaDayCount;
+
+MilenaStatus milena_date_init(MilenaDate *out, int32_t year, uint8_t month,
+                              uint8_t day, MilenaError *error);
+MilenaStatus milena_date_compare(const MilenaDate *left, const MilenaDate *right,
+                                 int *result, MilenaError *error);
+MilenaStatus milena_date_days_between(const MilenaDate *start,
+                                      const MilenaDate *end,
+                                      int64_t *days, MilenaError *error);
+MilenaStatus milena_period_fraction(const MilenaDate *start,
+                                    const MilenaDate *end,
+                                    MilenaDayCount convention,
+                                    MilenaDecimal *out, MilenaError *error);
 
 #ifdef __cplusplus
 }

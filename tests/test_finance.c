@@ -64,5 +64,26 @@ int main(void) {
     assert(rate.periods_per_year == 12);
     assert(rate.kind == MILENA_RATE_PERIODIC);
 
+    MilenaDecimal periodic_rate;
+    expect_ok(milena_decimal_from_string(&periodic_rate, "0.01", &error), &error);
+    expect_ok(milena_rate_init(&rate, periodic_rate, MILENA_RATE_PERIODIC, 12, &error), &error);
+    MilenaDecimal principal;
+    MilenaDecimal future;
+    expect_ok(milena_decimal_from_i64(&principal, 1000, &error), &error);
+    expect_ok(milena_compound_interest(&future, &principal, &rate, 2, &error), &error);
+    assert(future.coefficient == 10201 && future.scale == 1);
+
+    MilenaDate start;
+    MilenaDate end;
+    int64_t days = 0;
+    expect_ok(milena_date_init(&start, 2024, 1, 1, &error), &error);
+    expect_ok(milena_date_init(&end, 2024, 2, 1, &error), &error);
+    expect_ok(milena_date_days_between(&start, &end, &days, &error), &error);
+    assert(days == 31);
+    MilenaDecimal fraction;
+    expect_ok(milena_period_fraction(&start, &end, MILENA_DAY_COUNT_ACTUAL_365,
+                                      &fraction, &error), &error);
+    assert(fraction.coefficient > 0);
+
     return 0;
 }

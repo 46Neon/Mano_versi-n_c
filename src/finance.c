@@ -415,3 +415,273 @@ MilenaStatus milena_decimal_div(MilenaDecimal *out,
     decimal_normalize(out, error);
     return MILENA_OK;
 }
+
+static MilenaStatus decimal_one(MilenaDecimal *out, MilenaError *error) {
+    return milena_decimal_from_i64(out, 1, error);
+}
+
+static MilenaStatus decimal_negate(MilenaDecimal *out, const MilenaDecimal *value,
+                                   MilenaError *error) {
+    if (!out || !decimal_valid(value)) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Decimal inválido");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (value->coefficient == INT64_MIN) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "No se puede negar el decimal mínimo");
+        return MILENA_ERR_OVERFLOW;
+    }
+    *out = *value;
+    out->coefficient = -out->coefficient;
+    return MILENA_OK;
+}
+
+MilenaStatus milena_decimal_pow_uint(MilenaDecimal *out,
+                                     const MilenaDecimal *base,
+                                     uint32_t exponent,
+                                     MilenaError *error) {
+    if (!out || !decimal_valid(base)) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Base de potencia inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    MilenaDecimal result;
+    MilenaDecimal factor = *base;
+    MilenaStatus status = decimal_one(&result, error);
+    while (status == MILENA_OK && exponent > 0) {
+        if (exponent & 1u) {
+            MilenaDecimal next;
+            status = milena_decimal_mul(&next, &result, &factor, error);
+            if (status != MILENA_OK) break;
+            result = next;
+        }
+        exponent >>= 1u;
+        if (exponent > 0) {
+            MilenaDecimal next;
+            status = milena_decimal_mul(&next, &factor, &factor, error);
+            if (status != MILENA_OK) break;
+            factor = next;
+        }
+    }
+    if (status == MILENA_OK) *out = result;
+    return status;
+}
+
+static MilenaStatus require_periodic_rate(const MilenaRate *rate,
+                                          MilenaError *error) {
+    if (!rate || !decimal_valid(&rate->value) ||
+        rate->kind != MILENA_RATE_PERIODIC || rate->periods_per_year == 0) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Se requiere una tasa periódica válida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_rate_nominal_to_effective(MilenaDecimal *out,
+                                               const MilenaRate *nominal,
+                                               int32_t output_scale,
+                                               MilenaRoundingMode mode,
+                                               MilenaError *error) {
+    if (!out || !nominal || nominal->kind != MILENA_RATE_NOMINAL ||
+        nominal->periods_per_year == 0) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Se requiere una tasa nominal válida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    MilenaDecimal periods;
+    MilenaDecimal periodic;
+    MilenaDecimal one;
+    MilenaDecimal factor;
+    MilenaDecimal effective;
+    MilenaStatus status = milena_decimal_from_i64(
+        &periods, (int64_t)nominal->periods_per_year, error);
+    if (status == MILENA_OK) status = milena_decimal_div(
+        &periodic, &nominal->value, &periods, output_scale, mode, error);
+    if (status == MILENA_OK) status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_decimal_add(&factor, &one, &periodic, error);
+    if (status == MILENA_OK) status = milena_decimal_pow_uint(
+        &factor, &factor, nominal->periods_per_year, error);
+    if (status == MILENA_OK) status = milena_decimal_sub(&effective, &factor, &one, error);
+    if (status == MILENA_OK) status = milena_decimal_round(
+        out, &effective, output_scale, mode, error);
+    return status;
+}
+
+MilenaStatus milena_future_value(MilenaDecimal *out,
+                                 const MilenaDecimal *principal,
+                                 const MilenaRate *periodic_rate,
+                                 uint32_t periods,
+                                 MilenaError *error) {
+    MilenaStatus status = require_periodic_rate(periodic_rate, error);
+    if (status != MILENA_OK || !out || !decimal_valid(principal)) return status != MILENA_OK ? status : MILENA_ERR_ARGUMENT;
+    MilenaDecimal one;
+    MilenaDecimal factor;
+    MilenaDecimal growth;
+    status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_decimal_add(&factor, &one,
+                                                          &periodic_rate->value, error);
+    if (status == MILENA_OK) status = milena_decimal_pow_uint(&growth, &factor, periods, error);
+    if (status == MILENA_OK) status = milena_decimal_mul(out, principal, &growth, error);
+    return status;
+}
+
+MilenaStatus milena_present_value(MilenaDecimal *out,
+                                  const MilenaDecimal *future_value,
+                                  const MilenaRate *periodic_rate,
+                                  uint32_t periods,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaError *error) {
+    MilenaStatus status = require_periodic_rate(periodic_rate, error);
+    if (status != MILENA_OK || !out || !decimal_valid(future_value)) return status != MILENA_OK ? status : MILENA_ERR_ARGUMENT;
+    MilenaDecimal one;
+    MilenaDecimal factor;
+    status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_decimal_add(&factor, &one,
+                                                          &periodic_rate->value, error);
+    if (status == MILENA_OK) status = milena_decimal_pow_uint(&factor, &factor, periods, error);
+    if (status == MILENA_OK) status = milena_decimal_div(out, future_value, &factor,
+                                                          output_scale, mode, error);
+    return status;
+}
+
+MilenaStatus milena_simple_interest(MilenaDecimal *out,
+                                    const MilenaDecimal *principal,
+                                    const MilenaRate *periodic_rate,
+                                    uint32_t periods,
+                                    MilenaError *error) {
+    MilenaStatus status = require_periodic_rate(periodic_rate, error);
+    if (status != MILENA_OK || !out || !decimal_valid(principal)) return status != MILENA_OK ? status : MILENA_ERR_ARGUMENT;
+    MilenaDecimal count;
+    MilenaDecimal interest;
+    MilenaDecimal factor;
+    MilenaDecimal one;
+    status = milena_decimal_from_i64(&count, (int64_t)periods, error);
+    if (status == MILENA_OK) status = milena_decimal_mul(&interest, &periodic_rate->value, &count, error);
+    if (status == MILENA_OK) status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_decimal_add(&factor, &one, &interest, error);
+    if (status == MILENA_OK) status = milena_decimal_mul(out, principal, &factor, error);
+    return status;
+}
+
+MilenaStatus milena_compound_interest(MilenaDecimal *out,
+                                      const MilenaDecimal *principal,
+                                      const MilenaRate *periodic_rate,
+                                      uint32_t periods,
+                                      MilenaError *error) {
+    return milena_future_value(out, principal, periodic_rate, periods, error);
+}
+
+MilenaStatus milena_annuity_payment(MilenaDecimal *out,
+                                    const MilenaDecimal *principal,
+                                    const MilenaRate *periodic_rate,
+                                    uint32_t periods,
+                                    int32_t output_scale,
+                                    MilenaRoundingMode mode,
+                                    MilenaError *error) {
+    MilenaStatus status = require_periodic_rate(periodic_rate, error);
+    if (status != MILENA_OK || !out || !decimal_valid(principal) || periods == 0) {
+        if (status == MILENA_OK) finance_error(error, MILENA_ERR_ARGUMENT, "Período de amortización inválido");
+        return status != MILENA_OK ? status : MILENA_ERR_ARGUMENT;
+    }
+    MilenaDecimal count;
+    status = milena_decimal_from_i64(&count, (int64_t)periods, error);
+    if (status != MILENA_OK) return status;
+    if (periodic_rate->value.coefficient == 0) {
+        return milena_decimal_div(out, principal, &count, output_scale, mode, error);
+    }
+    MilenaDecimal one;
+    MilenaDecimal factor;
+    MilenaDecimal inverse;
+    MilenaDecimal denominator;
+    MilenaDecimal numerator;
+    MilenaDecimal payment;
+    status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_decimal_add(&factor, &one, &periodic_rate->value, error);
+    if (status == MILENA_OK) status = milena_decimal_pow_uint(&factor, &factor, periods, error);
+    if (status == MILENA_OK) status = milena_decimal_div(&inverse, &one, &factor, output_scale + 6, mode, error);
+    if (status == MILENA_OK) status = milena_decimal_sub(&denominator, &one, &inverse, error);
+    if (status == MILENA_OK) status = milena_decimal_mul(&numerator, principal, &periodic_rate->value, error);
+    if (status == MILENA_OK) status = milena_decimal_div(&payment, &numerator, &denominator,
+                                                          output_scale, mode, error);
+    if (status == MILENA_OK) *out = payment;
+    return status;
+}
+
+static bool date_leap(int32_t year) {
+    return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+}
+
+static uint8_t date_month_days(int32_t year, uint8_t month) {
+    static const uint8_t days[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    return month == 2 && date_leap(year) ? 29 : days[month - 1];
+}
+
+MilenaStatus milena_date_init(MilenaDate *out, int32_t year, uint8_t month,
+                              uint8_t day, MilenaError *error) {
+    if (!out || month < 1 || month > 12 || day < 1 || day > date_month_days(year, month)) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Fecha inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    out->year = year;
+    out->month = month;
+    out->day = day;
+    return MILENA_OK;
+}
+
+MilenaStatus milena_date_compare(const MilenaDate *left, const MilenaDate *right,
+                                 int *result, MilenaError *error) {
+    if (!left || !right || !result || left->month < 1 || left->month > 12 ||
+        right->month < 1 || right->month > 12) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Fecha inválida para comparar");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (left->year != right->year) *result = left->year < right->year ? -1 : 1;
+    else if (left->month != right->month) *result = left->month < right->month ? -1 : 1;
+    else *result = left->day < right->day ? -1 : (left->day > right->day ? 1 : 0);
+    return MILENA_OK;
+}
+
+static int64_t date_serial(MilenaDate date) {
+    int64_t year = date.year - (date.month <= 2 ? 1 : 0);
+    int64_t era = (year >= 0 ? year : year - 399) / 400;
+    uint32_t year_of_era = (uint32_t)(year - era * 400);
+    int32_t adjusted_month = (int32_t)date.month + (date.month > 2 ? -3 : 9);
+    uint32_t day_of_year = (uint32_t)((153 * adjusted_month + 2) / 5) + date.day - 1u;
+    uint32_t day_of_era = year_of_era * 365u + year_of_era / 4u - year_of_era / 100u + day_of_year;
+    return era * 146097 + (int64_t)day_of_era;
+}
+
+MilenaStatus milena_date_days_between(const MilenaDate *start,
+                                      const MilenaDate *end,
+                                      int64_t *days, MilenaError *error) {
+    int comparison = 0;
+    MilenaStatus status = milena_date_compare(start, end, &comparison, error);
+    if (status != MILENA_OK) return status;
+    (void)comparison;
+    if (!days) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Salida de días nula");
+        return MILENA_ERR_ARGUMENT;
+    }
+    *days = date_serial(*end) - date_serial(*start);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_period_fraction(const MilenaDate *start,
+                                    const MilenaDate *end,
+                                    MilenaDayCount convention,
+                                    MilenaDecimal *out, MilenaError *error) {
+    if (convention < MILENA_DAY_COUNT_ACTUAL_365 || convention > MILENA_DAY_COUNT_ACTUAL_360) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Convención de días inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    int64_t days = 0;
+    MilenaStatus status = milena_date_days_between(start, end, &days, error);
+    if (status != MILENA_OK) return status;
+    MilenaDecimal numerator;
+    MilenaDecimal denominator;
+    status = milena_decimal_from_i64(&numerator, days, error);
+    if (status == MILENA_OK) status = milena_decimal_from_i64(
+        &denominator, convention == MILENA_DAY_COUNT_ACTUAL_365 ? 365 : 360, error);
+    if (status == MILENA_OK) status = milena_decimal_div(
+        out, &numerator, &denominator, MILENA_DECIMAL_MAX_SCALE,
+        MILENA_ROUND_HALF_EVEN, error);
+    return status;
+}
