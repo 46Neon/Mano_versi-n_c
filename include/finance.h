@@ -141,6 +141,11 @@ typedef enum {
     MILENA_PAYMENT_ANNUAL
 } MilenaPaymentFrequency;
 
+typedef enum {
+    MILENA_MONTH_END_PRESERVE_DAY = 0,
+    MILENA_MONTH_END_STICK_TO_END
+} MilenaMonthEndPolicy;
+
 MilenaStatus milena_period_fraction(const MilenaDate *start,
                                     const MilenaDate *end,
                                     MilenaDayCount convention,
@@ -151,6 +156,10 @@ MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
                                     uint32_t periods,
                                     MilenaPaymentFrequency frequency,
                                     MilenaError *error);
+MilenaStatus milena_date_add_period_policy(
+    MilenaDate *out, MilenaDate date, uint32_t periods,
+    MilenaPaymentFrequency frequency, MilenaMonthEndPolicy policy,
+    MilenaError *error);
 
 typedef struct {
     MilenaDate date;
@@ -209,6 +218,15 @@ MilenaStatus milena_amortization_build_frequency(
     uint32_t periods,
     MilenaDate first_payment_date,
     MilenaPaymentFrequency frequency,
+    MilenaError *error);
+MilenaStatus milena_amortization_build_frequency_policy(
+    MilenaAmortizationSchedule *schedule,
+    MilenaMoney principal,
+    const MilenaRate *periodic_rate,
+    uint32_t periods,
+    MilenaDate first_payment_date,
+    MilenaPaymentFrequency frequency,
+    MilenaMonthEndPolicy policy,
     MilenaError *error);
 
 #ifdef __cplusplus

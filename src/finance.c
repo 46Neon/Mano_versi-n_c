@@ -877,10 +877,10 @@ MilenaStatus milena_date_add_months(MilenaDate *out, MilenaDate date,
     return milena_date_init(out, year, month, day, error);
 }
 
-MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
-                                    uint32_t periods,
-                                    MilenaPaymentFrequency frequency,
-                                    MilenaError *error) {
+MilenaStatus milena_date_add_period_policy(
+    MilenaDate *out, MilenaDate date, uint32_t periods,
+    MilenaPaymentFrequency frequency, MilenaMonthEndPolicy policy,
+    MilenaError *error) {
     uint32_t multiplier = 0;
     switch (frequency) {
         case MILENA_PAYMENT_MONTHLY: multiplier = 1u; break;
@@ -895,16 +895,36 @@ MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
         finance_error(error, MILENA_ERR_OVERFLOW, "Período de calendario fuera de rango");
         return MILENA_ERR_OVERFLOW;
     }
-    return milena_date_add_months(out, date, periods * multiplier, error);
+    if (policy < MILENA_MONTH_END_PRESERVE_DAY ||
+        policy > MILENA_MONTH_END_STICK_TO_END) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Política de fin de mes inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    bool source_is_month_end = date.day == date_month_days(date.year, date.month);
+    MilenaStatus status = milena_date_add_months(out, date, periods * multiplier, error);
+    if (status != MILENA_OK) return status;
+    if (policy == MILENA_MONTH_END_STICK_TO_END && source_is_month_end) {
+        out->day = date_month_days(out->year, out->month);
+    }
+    return MILENA_OK;
 }
 
-MilenaStatus milena_amortization_build_frequency(
+MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
+                                    uint32_t periods,
+                                    MilenaPaymentFrequency frequency,
+                                    MilenaError *error) {
+    return milena_date_add_period_policy(out, date, periods, frequency,
+                                         MILENA_MONTH_END_PRESERVE_DAY, error);
+}
+
+MilenaStatus milena_amortization_build_frequency_policy(
     MilenaAmortizationSchedule *schedule,
     MilenaMoney principal,
     const MilenaRate *periodic_rate,
     uint32_t periods,
     MilenaDate first_payment_date,
     MilenaPaymentFrequency frequency,
+    MilenaMonthEndPolicy policy,
     MilenaError *error) {
     if (!schedule || periods == 0 || principal.amount.coefficient < 0 ||
         require_periodic_rate(periodic_rate, error) != MILENA_OK) {
@@ -920,8 +940,9 @@ MilenaStatus milena_amortization_build_frequency(
     MilenaDecimal balance = principal.amount;
     for (uint32_t period = 1; period <= periods; period++) {
         MilenaDate date;
-        status = milena_date_add_period(&date, first_payment_date, period - 1u,
-                                        frequency, error);
+        status = milena_date_add_period_policy(&date, first_payment_date,
+                                                period - 1u, frequency, policy,
+                                                error);
         if (status != MILENA_OK) break;
         MilenaDecimal interest;
         MilenaDecimal principal_paid;
@@ -965,6 +986,19 @@ MilenaStatus milena_amortization_build_frequency(
     }
     if (status != MILENA_OK) milena_amortization_schedule_destroy(schedule);
     return status;
+}
+
+MilenaStatus milena_amortization_build_frequency(
+    MilenaAmortizationSchedule *schedule,
+    MilenaMoney principal,
+    const MilenaRate *periodic_rate,
+    uint32_t periods,
+    MilenaDate first_payment_date,
+    MilenaPaymentFrequency frequency,
+    MilenaError *error) {
+    return milena_amortization_build_frequency_policy(
+        schedule, principal, periodic_rate, periods, first_payment_date,
+        frequency, MILENA_MONTH_END_PRESERVE_DAY, error);
 }
 
 MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,

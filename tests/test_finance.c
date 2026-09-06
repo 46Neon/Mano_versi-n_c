@@ -89,6 +89,21 @@ int main(void) {
     expect_ok(milena_date_add_period(&april_end, january_end, 1,
                                      MILENA_PAYMENT_QUARTERLY, &error), &error);
     assert(april_end.month == 4 && april_end.day == 30);
+    MilenaDate july_end;
+    MilenaDate leap_day;
+    MilenaDate next_year_end;
+    expect_ok(milena_date_add_period_policy(&july_end, january_end, 1,
+                                            MILENA_PAYMENT_SEMIANNUAL,
+                                            MILENA_MONTH_END_STICK_TO_END,
+                                            &error), &error);
+    assert(july_end.month == 7 && july_end.day == 31);
+    expect_ok(milena_date_init(&leap_day, 2024, 2, 29, &error), &error);
+    expect_ok(milena_date_add_period_policy(&next_year_end, leap_day, 1,
+                                            MILENA_PAYMENT_ANNUAL,
+                                            MILENA_MONTH_END_STICK_TO_END,
+                                            &error), &error);
+    assert(next_year_end.year == 2025 && next_year_end.month == 2 &&
+           next_year_end.day == 28);
     MilenaDecimal fraction;
     expect_ok(milena_period_fraction(&start, &end, MILENA_DAY_COUNT_ACTUAL_365,
                                       &fraction, &error), &error);
