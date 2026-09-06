@@ -222,6 +222,40 @@ Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales,
 - La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.mano` sigue pendiente.
 - La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
 
+## Instalación en Termux mediante APT
+
+Una vez publicado el repositorio APT, la instalación para una persona usuaria no requiere clonar el código ni compilar Mano. Se necesita la dirección pública del sitio APT configurado para la distribución y la clave pública del repositorio.
+
+```bash
+pkg install curl gnupg
+mkdir -p "$PREFIX/etc/apt/keyrings" "$PREFIX/etc/apt/sources.list.d"
+NETLIFY_REPO_URL="PEGA_AQUI_LA_DIRECCION_PUBLICA_DEL_REPOSITORIO"
+curl -fsSL "$NETLIFY_REPO_URL/mano-archive-keyring.asc" \
+  | gpg --dearmor \
+  > "$PREFIX/etc/apt/keyrings/mano-archive.gpg"
+printf 'deb [signed-by=%s] %s stable main\n' \
+  "$PREFIX/etc/apt/keyrings/mano-archive.gpg" \
+  "$NETLIFY_REPO_URL" \
+  > "$PREFIX/etc/apt/sources.list.d/mano.list"
+apt-get update --allow-releaseinfo-change
+pkg install mano
+```
+
+Para actualizar:
+
+```bash
+pkg update
+pkg upgrade mano
+```
+
+Para desinstalar solamente Mano:
+
+```bash
+apt remove mano
+```
+
+La dirección pública del repositorio debe copiarse desde el despliegue de Netlify; no debe confundirse con el panel privado de administración.
+
 ## Empaquetado para Termux
 
 El flujo de empaquetado se encuentra en `packaging/termux/`. La primera fase genera un `.deb` local para la arquitectura de Termux donde se ejecuta:
@@ -236,7 +270,7 @@ Para ofrecer una instalación pública mediante:
 pkg install mano
 ```
 
-todavía hay que publicar un repositorio APT con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Pages puede servir esos archivos estáticos, pero una CI debe generarlos y firmarlos antes del despliegue.
+El repositorio APT se genera con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Actions lo publica en un sitio estático de Netlify; la clave privada GPG permanece en los secretos de Actions.
 
 Un paquete Termux no debe mezclarse con un paquete Debian/Ubuntu ni con un ejecutable Windows. Cada plataforma requiere su propia compilación y distribución. Consulta `packaging/termux/README.md` antes de publicar.
 
