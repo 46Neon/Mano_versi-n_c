@@ -5,7 +5,7 @@ set -euo pipefail
 # Requiere: dpkg-deb, dpkg-scanpackages, apt-ftparchive y gpg.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="${MANO_VERSION:-0.1.0}"
+VERSION="${MANO_VERSION:-0.1.1}"
 RAW_KEY_ID="${MANO_GPG_KEY_ID:?Define MANO_GPG_KEY_ID con la clave de publicación}"
 KEY_ID="$(printf '%s' "$RAW_KEY_ID" | tr -d '[:space:]')"
 KEY_ID="${KEY_ID#rsa3072/}"
