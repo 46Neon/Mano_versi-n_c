@@ -37,7 +37,17 @@ for package in "$INPUT_DIR"/mano_*.deb; do
     gzip -9c "$destination/Packages" > "$destination/Packages.gz"
 done
 
-apt-ftparchive release "$OUTPUT_DIR/dists/stable" > "$OUTPUT_DIR/dists/stable/Release"
+RELEASE_CONFIG="$OUTPUT_DIR/.apt-ftparchive.conf"
+cat > "$RELEASE_CONFIG" <<EOF
+APT::FTPArchive::Release::Origin "Mano";
+APT::FTPArchive::Release::Label "Mano APT";
+APT::FTPArchive::Release::Suite "stable";
+APT::FTPArchive::Release::Codename "stable";
+APT::FTPArchive::Release::Components "main";
+APT::FTPArchive::Release::Architectures "aarch64 amd64";
+EOF
+apt-ftparchive -c="$RELEASE_CONFIG" release "$OUTPUT_DIR/dists/stable" > "$OUTPUT_DIR/dists/stable/Release"
+rm -f "$RELEASE_CONFIG"
 GPG_ARGS=(--batch --yes --local-user "$KEY_ID")
 PASSPHRASE_FILE=""
 cleanup_passphrase() { [[ -z "$PASSPHRASE_FILE" ]] || rm -f "$PASSPHRASE_FILE"; }
