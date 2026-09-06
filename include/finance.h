@@ -166,13 +166,6 @@ MilenaStatus milena_cash_flow_irr(const MilenaCashFlowSeries *series,
                                   MilenaRoundingMode mode,
                                   MilenaDecimal *out, MilenaError *error);
 
-typedef enum {
-    MILENA_PAYMENT_MONTHLY = 0,
-    MILENA_PAYMENT_QUARTERLY,
-    MILENA_PAYMENT_SEMIANNUAL,
-    MILENA_PAYMENT_ANNUAL
-} MilenaPaymentFrequency;
-
 typedef struct {
     uint32_t period;
     MilenaDate date;
@@ -196,14 +189,6 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
                                         uint32_t periods,
                                         MilenaDate first_payment_date,
                                         MilenaError *error);
-MilenaStatus milena_amortization_build_frequency(
-    MilenaAmortizationSchedule *schedule,
-    MilenaMoney principal,
-    const MilenaRate *periodic_rate,
-    uint32_t periods,
-    MilenaDate first_payment_date,
-    MilenaPaymentFrequency frequency,
-    MilenaError *error);
 
 #ifdef __cplusplus
 }
