@@ -139,6 +139,57 @@ MilenaStatus milena_period_fraction(const MilenaDate *start,
                                     MilenaDayCount convention,
                                     MilenaDecimal *out, MilenaError *error);
 
+typedef struct {
+    MilenaDate date;
+    MilenaMoney money;
+} MilenaCashFlow;
+
+typedef struct {
+    MilenaCashFlow *items;
+    size_t count;
+    size_t capacity;
+    char currency[MILENA_CURRENCY_CODE_SIZE];
+} MilenaCashFlowSeries;
+
+void milena_cash_flow_series_init(MilenaCashFlowSeries *series);
+void milena_cash_flow_series_destroy(MilenaCashFlowSeries *series);
+MilenaStatus milena_cash_flow_series_add(MilenaCashFlowSeries *series,
+                                         MilenaCashFlow flow,
+                                         MilenaError *error);
+MilenaStatus milena_cash_flow_npv(const MilenaCashFlowSeries *series,
+                                  const MilenaRate *periodic_rate,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaDecimal *out, MilenaError *error);
+MilenaStatus milena_cash_flow_irr(const MilenaCashFlowSeries *series,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaDecimal *out, MilenaError *error);
+
+typedef struct {
+    uint32_t period;
+    MilenaDate date;
+    MilenaMoney payment;
+    MilenaMoney interest;
+    MilenaMoney principal;
+    MilenaMoney balance;
+} MilenaAmortizationRow;
+
+typedef struct {
+    MilenaAmortizationRow *rows;
+    size_t count;
+    size_t capacity;
+} MilenaAmortizationSchedule;
+
+void milena_amortization_schedule_init(MilenaAmortizationSchedule *schedule);
+void milena_amortization_schedule_destroy(MilenaAmortizationSchedule *schedule);
+MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
+                                        MilenaMoney principal,
+                                        const MilenaRate *periodic_rate,
+                                        uint32_t periods,
+                                        MilenaDate first_payment_date,
+                                        MilenaError *error);
+
 #ifdef __cplusplus
 }
 #endif

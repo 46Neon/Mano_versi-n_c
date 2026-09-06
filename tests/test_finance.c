@@ -85,5 +85,38 @@ int main(void) {
                                       &fraction, &error), &error);
     assert(fraction.coefficient > 0);
 
+    MilenaDecimal negative_thousand;
+    MilenaDecimal eleven_hundred;
+    expect_ok(milena_decimal_from_i64(&negative_thousand, -1000, &error), &error);
+    expect_ok(milena_decimal_from_i64(&eleven_hundred, 1100, &error), &error);
+    MilenaMoney initial_flow;
+    MilenaMoney final_flow;
+    expect_ok(milena_money_init(&initial_flow, negative_thousand, "USD", &error), &error);
+    expect_ok(milena_money_init(&final_flow, eleven_hundred, "USD", &error), &error);
+    MilenaCashFlowSeries flows;
+    milena_cash_flow_series_init(&flows);
+    MilenaCashFlow first_flow = {start, initial_flow};
+    MilenaCashFlow second_flow = {end, final_flow};
+    expect_ok(milena_cash_flow_series_add(&flows, first_flow, &error), &error);
+    expect_ok(milena_cash_flow_series_add(&flows, second_flow, &error), &error);
+    MilenaDecimal ten_percent;
+    expect_ok(milena_decimal_from_string(&ten_percent, "0.10", &error), &error);
+    expect_ok(milena_rate_init(&rate, ten_percent, MILENA_RATE_PERIODIC, 1, &error), &error);
+    MilenaDecimal net_present_value;
+    expect_ok(milena_cash_flow_npv(&flows, &rate, 2, MILENA_ROUND_HALF_EVEN,
+                                   &net_present_value, &error), &error);
+    assert(net_present_value.coefficient == 0);
+    MilenaDecimal internal_rate;
+    expect_ok(milena_cash_flow_irr(&flows, 2, MILENA_ROUND_HALF_EVEN,
+                                   &internal_rate, &error), &error);
+    assert(internal_rate.coefficient == 10 && internal_rate.scale == 2);
+
+    MilenaAmortizationSchedule schedule;
+    expect_ok(milena_amortization_build(&schedule, usd_a, &rate, 2, end, &error), &error);
+    assert(schedule.count == 2);
+    assert(schedule.rows[1].balance.amount.coefficient == 0);
+    milena_amortization_schedule_destroy(&schedule);
+    milena_cash_flow_series_destroy(&flows);
+
     return 0;
 }

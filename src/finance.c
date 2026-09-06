@@ -596,7 +596,8 @@ MilenaStatus milena_annuity_payment(MilenaDecimal *out,
     status = decimal_one(&one, error);
     if (status == MILENA_OK) status = milena_decimal_add(&factor, &one, &periodic_rate->value, error);
     if (status == MILENA_OK) status = milena_decimal_pow_uint(&factor, &factor, periods, error);
-    if (status == MILENA_OK) status = milena_decimal_div(&inverse, &one, &factor, output_scale + 6, mode, error);
+    int32_t inverse_scale = output_scale > 4 ? 4 : output_scale;
+    if (status == MILENA_OK) status = milena_decimal_div(&inverse, &one, &factor, inverse_scale, mode, error);
     if (status == MILENA_OK) status = milena_decimal_sub(&denominator, &one, &inverse, error);
     if (status == MILENA_OK) status = milena_decimal_mul(&numerator, principal, &periodic_rate->value, error);
     if (status == MILENA_OK) status = milena_decimal_div(&payment, &numerator, &denominator,
@@ -683,5 +684,256 @@ MilenaStatus milena_period_fraction(const MilenaDate *start,
     if (status == MILENA_OK) status = milena_decimal_div(
         out, &numerator, &denominator, 15,
         MILENA_ROUND_HALF_EVEN, error);
+    return status;
+}
+
+void milena_cash_flow_series_init(MilenaCashFlowSeries *series) {
+    if (series) memset(series, 0, sizeof(*series));
+}
+
+void milena_cash_flow_series_destroy(MilenaCashFlowSeries *series) {
+    if (!series) return;
+    free(series->items);
+    memset(series, 0, sizeof(*series));
+}
+
+MilenaStatus milena_cash_flow_series_add(MilenaCashFlowSeries *series,
+                                         MilenaCashFlow flow,
+                                         MilenaError *error) {
+    if (!series || check_currency(flow.money.currency, error) != MILENA_OK ||
+        milena_date_init(&(MilenaDate){0}, flow.date.year, flow.date.month,
+                         flow.date.day, error) != MILENA_OK) {
+        if (error && error->code == MILENA_OK)
+            finance_error(error, MILENA_ERR_ARGUMENT, "Flujo de caja inválido");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (series->count > 0 && strcmp(series->currency, flow.money.currency) != 0) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Los flujos deben usar la misma moneda");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (series->count > 0) {
+        int comparison = 0;
+        MilenaStatus status = milena_date_compare(
+            &series->items[series->count - 1].date, &flow.date, &comparison, error);
+        if (status != MILENA_OK || comparison > 0) {
+            if (status == MILENA_OK)
+                finance_error(error, MILENA_ERR_ARGUMENT, "Los flujos deben estar ordenados por fecha");
+            return status == MILENA_OK ? MILENA_ERR_ARGUMENT : status;
+        }
+    }
+    if (series->count == series->capacity) {
+        size_t capacity = series->capacity == 0 ? 8 : series->capacity * 2;
+        if (capacity < series->capacity || capacity > SIZE_MAX / sizeof(*series->items)) {
+            finance_error(error, MILENA_ERR_OVERFLOW, "Demasiados flujos de caja");
+            return MILENA_ERR_OVERFLOW;
+        }
+        MilenaCashFlow *items = (MilenaCashFlow *)realloc(
+            series->items, capacity * sizeof(*items));
+        if (!items) {
+            finance_error(error, MILENA_ERR_MEMORY, "No se pudo reservar la serie de flujos");
+            return MILENA_ERR_MEMORY;
+        }
+        series->items = items;
+        series->capacity = capacity;
+    }
+    if (series->count == 0) memcpy(series->currency, flow.money.currency,
+                                   MILENA_CURRENCY_CODE_SIZE);
+    series->items[series->count++] = flow;
+    return MILENA_OK;
+}
+
+static MilenaStatus cash_flow_npv_at_rate(const MilenaCashFlowSeries *series,
+                                          const MilenaRate *rate,
+                                          int32_t output_scale,
+                                          MilenaRoundingMode mode,
+                                          MilenaDecimal *out,
+                                          MilenaError *error) {
+    if (!series || series->count == 0 || !out) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Serie de flujos vacía");
+        return MILENA_ERR_ARGUMENT;
+    }
+    MilenaDecimal total;
+    MilenaStatus status = milena_decimal_from_i64(&total, 0, error);
+    for (size_t i = 0; status == MILENA_OK && i < series->count; i++) {
+        MilenaDecimal value = series->items[i].money.amount;
+        if (i > 0) status = milena_present_value(&value, &value, rate,
+                                                  (uint32_t)i, output_scale,
+                                                  mode, error);
+        if (status == MILENA_OK) status = milena_decimal_add(&total, &total, &value, error);
+    }
+    if (status == MILENA_OK) status = milena_decimal_round(out, &total,
+                                                            output_scale, mode, error);
+    return status;
+}
+
+MilenaStatus milena_cash_flow_npv(const MilenaCashFlowSeries *series,
+                                  const MilenaRate *periodic_rate,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaDecimal *out, MilenaError *error) {
+    return cash_flow_npv_at_rate(series, periodic_rate, output_scale, mode,
+                                 out, error);
+}
+
+MilenaStatus milena_cash_flow_irr(const MilenaCashFlowSeries *series,
+                                  int32_t output_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaDecimal *out, MilenaError *error) {
+    if (!series || series->count < 2 || !out || output_scale < 0 ||
+        output_scale > MILENA_DECIMAL_MAX_SCALE) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de IRR inválidos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    MilenaDecimal low;
+    MilenaDecimal high;
+    MilenaDecimal one;
+    MilenaDecimal denominator;
+    MilenaDecimal low_npv;
+    MilenaDecimal high_npv;
+    MilenaRate low_rate;
+    MilenaRate high_rate;
+    MilenaStatus status = milena_decimal_from_string(&low, "-0.999999", error);
+    if (status == MILENA_OK) status = milena_decimal_from_i64(&high, 10, error);
+    if (status == MILENA_OK) status = decimal_one(&one, error);
+    if (status == MILENA_OK) status = milena_rate_init(&low_rate, low,
+                                                        MILENA_RATE_PERIODIC, 1, error);
+    if (status == MILENA_OK) status = milena_rate_init(&high_rate, high,
+                                                        MILENA_RATE_PERIODIC, 1, error);
+    if (status == MILENA_OK) status = cash_flow_npv_at_rate(series, &low_rate,
+                                                             output_scale + 4,
+                                                             mode, &low_npv, error);
+    if (status == MILENA_OK) status = cash_flow_npv_at_rate(series, &high_rate,
+                                                             output_scale + 4,
+                                                             mode, &high_npv, error);
+    if (status != MILENA_OK) return status;
+    int low_sign = low_npv.coefficient < 0 ? -1 : (low_npv.coefficient > 0 ? 1 : 0);
+    int high_sign = high_npv.coefficient < 0 ? -1 : (high_npv.coefficient > 0 ? 1 : 0);
+    if (low_sign == high_sign && low_sign != 0) {
+        finance_error(error, MILENA_ERR_DATA, "No se encontró un intervalo para IRR");
+        return MILENA_ERR_DATA;
+    }
+    for (size_t iteration = 0; iteration < 96; iteration++) {
+        MilenaDecimal sum;
+        MilenaDecimal midpoint;
+        MilenaDecimal two;
+        status = milena_decimal_add(&sum, &low, &high, error);
+        if (status == MILENA_OK) status = milena_decimal_from_i64(&two, 2, error);
+        if (status == MILENA_OK) status = milena_decimal_div(&midpoint, &sum, &two,
+                                                              output_scale + 6,
+                                                              MILENA_ROUND_HALF_EVEN, error);
+        if (status != MILENA_OK) return status;
+        MilenaRate midpoint_rate;
+        MilenaDecimal midpoint_npv;
+        status = milena_rate_init(&midpoint_rate, midpoint, MILENA_RATE_PERIODIC, 1, error);
+        if (status == MILENA_OK) status = cash_flow_npv_at_rate(series, &midpoint_rate,
+                                                                 output_scale + 4,
+                                                                 mode, &midpoint_npv, error);
+        if (status != MILENA_OK) return status;
+        int midpoint_sign = midpoint_npv.coefficient < 0 ? -1 :
+            (midpoint_npv.coefficient > 0 ? 1 : 0);
+        if (midpoint_sign == 0) {
+            low = midpoint;
+            high = midpoint;
+            break;
+        }
+        if (midpoint_sign == low_sign) {
+            low = midpoint;
+            low_sign = midpoint_sign;
+        } else {
+            high = midpoint;
+            high_sign = midpoint_sign;
+        }
+    }
+    status = milena_decimal_add(&denominator, &low, &high, error);
+    if (status == MILENA_OK) status = milena_decimal_from_i64(&one, 2, error);
+    if (status == MILENA_OK) status = milena_decimal_div(out, &denominator, &one,
+                                                          output_scale, mode, error);
+    return status;
+}
+
+void milena_amortization_schedule_init(MilenaAmortizationSchedule *schedule) {
+    if (schedule) memset(schedule, 0, sizeof(*schedule));
+}
+
+void milena_amortization_schedule_destroy(MilenaAmortizationSchedule *schedule) {
+    if (!schedule) return;
+    free(schedule->rows);
+    memset(schedule, 0, sizeof(*schedule));
+}
+
+static MilenaStatus date_add_months(MilenaDate *out, MilenaDate date,
+                                    uint32_t months, MilenaError *error) {
+    uint64_t total = (uint64_t)(date.year < 0 ? 0 : date.year) * 12u +
+                     (uint64_t)(date.month - 1u) + months;
+    int32_t year = (int32_t)(total / 12u);
+    uint8_t month = (uint8_t)(total % 12u + 1u);
+    uint8_t day = date.day > date_month_days(year, month) ?
+        date_month_days(year, month) : date.day;
+    return milena_date_init(out, year, month, day, error);
+}
+
+MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
+                                        MilenaMoney principal,
+                                        const MilenaRate *periodic_rate,
+                                        uint32_t periods,
+                                        MilenaDate first_payment_date,
+                                        MilenaError *error) {
+    if (!schedule || periods == 0 || principal.amount.coefficient < 0 ||
+        require_periodic_rate(periodic_rate, error) != MILENA_OK) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de amortización inválidos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    milena_amortization_schedule_init(schedule);
+    MilenaDecimal payment_decimal;
+    MilenaStatus status = milena_annuity_payment(&payment_decimal, &principal.amount,
+                                                  periodic_rate, periods, 12,
+                                                  MILENA_ROUND_HALF_EVEN, error);
+    if (status != MILENA_OK) return status;
+    MilenaDecimal balance = principal.amount;
+    for (uint32_t period = 1; period <= periods; period++) {
+        MilenaDate date;
+        status = date_add_months(&date, first_payment_date, period - 1u, error);
+        if (status != MILENA_OK) break;
+        MilenaDecimal interest;
+        MilenaDecimal principal_paid;
+        MilenaDecimal payment = payment_decimal;
+        status = milena_decimal_mul(&interest, &balance, &periodic_rate->value, error);
+        if (status == MILENA_OK) status = milena_decimal_sub(&principal_paid, &payment, &interest, error);
+        if (status == MILENA_OK && period == periods) {
+            principal_paid = balance;
+            status = milena_decimal_add(&payment, &interest, &principal_paid, error);
+        }
+        MilenaDecimal next_balance;
+        if (status == MILENA_OK) status = milena_decimal_sub(&next_balance, &balance,
+                                                              &principal_paid, error);
+        if (status != MILENA_OK) break;
+        if (next_balance.coefficient < 0) {
+            next_balance.coefficient = 0;
+            next_balance.scale = 0;
+        }
+        if (schedule->count == schedule->capacity) {
+            size_t capacity = schedule->capacity == 0 ? 8 : schedule->capacity * 2;
+            MilenaAmortizationRow *rows = (MilenaAmortizationRow *)realloc(
+                schedule->rows, capacity * sizeof(*rows));
+            if (!rows) {
+                status = MILENA_ERR_MEMORY;
+                finance_error(error, status, "No se pudo reservar el calendario de amortización");
+                break;
+            }
+            schedule->rows = rows;
+            schedule->capacity = capacity;
+        }
+        MilenaAmortizationRow *row = &schedule->rows[schedule->count];
+        row->period = period;
+        row->date = date;
+        status = milena_money_init(&row->payment, payment, principal.currency, error);
+        if (status == MILENA_OK) status = milena_money_init(&row->interest, interest, principal.currency, error);
+        if (status == MILENA_OK) status = milena_money_init(&row->principal, principal_paid, principal.currency, error);
+        if (status == MILENA_OK) status = milena_money_init(&row->balance, next_balance, principal.currency, error);
+        if (status != MILENA_OK) break;
+        schedule->count++;
+        balance = next_balance;
+    }
+    if (status != MILENA_OK) milena_amortization_schedule_destroy(schedule);
     return status;
 }
