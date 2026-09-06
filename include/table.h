@@ -37,6 +37,23 @@ MilenaStatus milena_table_filter(MilenaTable *out,
                                  const MilenaTable *source,
                                  const MilenaArray *mask,
                                  MilenaError *error);
+MilenaStatus milena_table_select_columns(MilenaTable *out,
+                                         const MilenaTable *source,
+                                         const char *const *names,
+                                         size_t name_count,
+                                         MilenaError *error);
+MilenaStatus milena_table_fill_null_f64(MilenaTable *table,
+                                        const char *column_name,
+                                        double value,
+                                        MilenaError *error);
+MilenaStatus milena_table_drop_null(MilenaTable *out,
+                                    const MilenaTable *source,
+                                    MilenaError *error);
+MilenaStatus milena_table_sort(MilenaTable *out,
+                               const MilenaTable *source,
+                               const char *column_name,
+                               bool ascending,
+                               MilenaError *error);
 
 #ifdef __cplusplus
 }

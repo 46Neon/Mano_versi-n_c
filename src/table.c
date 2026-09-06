@@ -127,7 +127,8 @@ MilenaStatus milena_table_filter(MilenaTable *out,
                                  const MilenaArray *mask,
                                  MilenaError *error) {
     if (!out || !source || !mask || out == source || mask->dtype != MILENA_DTYPE_BOOL ||
-        mask->ndim != 1 || mask->size != source->row_count) {
+        mask->ndim != 1 || mask->size != source->row_count ||
+        !milena_array_is_contiguous(mask)) {
         table_error(error, MILENA_ERR_ARGUMENT, "El filtro requiere una máscara bool con una entrada por fila");
         return MILENA_ERR_ARGUMENT;
     }
@@ -177,4 +178,199 @@ MilenaStatus milena_table_filter(MilenaTable *out,
         }
     }
     return MILENA_OK;
+}
+
+MilenaStatus milena_table_select_columns(MilenaTable *out,
+                                         const MilenaTable *source,
+                                         const char *const *names,
+                                         size_t name_count,
+                                         MilenaError *error) {
+    if (!out || !source || out == source || (name_count > 0 && !names)) {
+        table_error(error, MILENA_ERR_ARGUMENT, "Argumentos inválidos para seleccionar columnas");
+        return MILENA_ERR_ARGUMENT;
+    }
+    milena_table_init(out);
+    for (size_t i = 0; i < name_count; i++) {
+        int index = milena_table_column_index(source, names[i]);
+        if (index < 0) {
+            milena_table_destroy(out);
+            table_error(error, MILENA_ERR_DATA, "La columna solicitada no existe");
+            return MILENA_ERR_DATA;
+        }
+        const MilenaTableColumn *column = &source->columns[index];
+        MilenaStatus status = milena_table_add_column_copy(out, column->name,
+                                                            &column->values,
+                                                            column->validity,
+                                                            error);
+        if (status != MILENA_OK) {
+            milena_table_destroy(out);
+            return status;
+        }
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_table_fill_null_f64(MilenaTable *table,
+                                        const char *column_name,
+                                        double value,
+                                        MilenaError *error) {
+    if (!table || !column_name) {
+        table_error(error, MILENA_ERR_ARGUMENT, "Argumentos inválidos para fill_null");
+        return MILENA_ERR_ARGUMENT;
+    }
+    int index = milena_table_column_index(table, column_name);
+    if (index < 0) {
+        table_error(error, MILENA_ERR_DATA, "La columna de fill_null no existe");
+        return MILENA_ERR_DATA;
+    }
+    MilenaTableColumn *column = &table->columns[index];
+    if (column->values.dtype != MILENA_DTYPE_FLOAT64) {
+        table_error(error, MILENA_ERR_TYPE, "fill_null_f64 requiere una columna float64");
+        return MILENA_ERR_TYPE;
+    }
+    if (!column->validity) return MILENA_OK;
+    double *data = (double *)milena_array_data(&column->values);
+    for (size_t row = 0; row < table->row_count; row++) {
+        if (!column->validity[row]) {
+            data[row] = value;
+            column->validity[row] = true;
+        }
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_table_drop_null(MilenaTable *out,
+                                    const MilenaTable *source,
+                                    MilenaError *error) {
+    if (!out || !source || out == source) {
+        table_error(error, MILENA_ERR_ARGUMENT, "Argumentos inválidos para drop_null");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t shape[] = {source->row_count};
+    MilenaArray mask = {0};
+    MilenaStatus status = milena_array_zeros(&mask, MILENA_DTYPE_BOOL, 1,
+                                             shape, error);
+    if (status != MILENA_OK) return status;
+    bool *mask_data = (bool *)milena_array_data(&mask);
+    for (size_t row = 0; row < source->row_count; row++) {
+        mask_data[row] = true;
+        for (size_t column = 0; column < source->column_count; column++) {
+            const bool *validity = source->columns[column].validity;
+            if (validity && !validity[row]) {
+                mask_data[row] = false;
+                break;
+            }
+        }
+    }
+    status = milena_table_filter(out, source, &mask, error);
+    milena_array_release(&mask);
+    return status;
+}
+
+static int compare_sort_rows(const MilenaTableColumn *column,
+                             size_t left, size_t right, bool ascending) {
+    bool left_valid = !column->validity || column->validity[left];
+    bool right_valid = !column->validity || column->validity[right];
+    if (left_valid != right_valid) return left_valid ? -1 : 1;
+    if (!left_valid) return 0;
+
+    int comparison = 0;
+    if (column->values.dtype == MILENA_DTYPE_INT64) {
+        const int64_t *data = (const int64_t *)milena_array_const_data(&column->values);
+        comparison = data[left] < data[right] ? -1 : (data[left] > data[right] ? 1 : 0);
+    } else if (column->values.dtype == MILENA_DTYPE_FLOAT64) {
+        const double *data = (const double *)milena_array_const_data(&column->values);
+        comparison = data[left] < data[right] ? -1 : (data[left] > data[right] ? 1 : 0);
+    } else {
+        return 0;
+    }
+    return ascending ? comparison : -comparison;
+}
+
+static MilenaStatus table_copy_order(MilenaTable *out,
+                                     const MilenaTable *source,
+                                     const size_t *order,
+                                     MilenaError *error) {
+    milena_table_init(out);
+    size_t shape[] = {source->row_count};
+    for (size_t column_index = 0; column_index < source->column_count; column_index++) {
+        const MilenaTableColumn *source_column = &source->columns[column_index];
+        MilenaArray values = {0};
+        MilenaStatus status = milena_array_zeros(&values, source_column->values.dtype,
+                                                 1, shape, error);
+        if (status != MILENA_OK) {
+            milena_table_destroy(out);
+            return status;
+        }
+        unsigned char *destination = (unsigned char *)milena_array_data(&values);
+        const unsigned char *source_data =
+            (const unsigned char *)milena_array_const_data(&source_column->values);
+        bool *validity = source->row_count > 0 ?
+            (bool *)malloc(source->row_count * sizeof(bool)) : NULL;
+        if (source->row_count > 0 && !validity) {
+            milena_array_release(&values);
+            milena_table_destroy(out);
+            table_error(error, MILENA_ERR_MEMORY, "No se pudo reservar validez para sort");
+            return MILENA_ERR_MEMORY;
+        }
+        for (size_t row = 0; row < source->row_count; row++) {
+            size_t source_row = order[row];
+            memcpy(destination + row * values.itemsize,
+                   source_data + source_row * values.itemsize,
+                   values.itemsize);
+            validity[row] = source_column->validity ?
+                source_column->validity[source_row] : true;
+        }
+        status = milena_table_add_column_copy(out, source_column->name,
+                                               &values, validity, error);
+        free(validity);
+        milena_array_release(&values);
+        if (status != MILENA_OK) {
+            milena_table_destroy(out);
+            return status;
+        }
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_table_sort(MilenaTable *out,
+                               const MilenaTable *source,
+                               const char *column_name,
+                               bool ascending,
+                               MilenaError *error) {
+    if (!out || !source || !column_name || out == source) {
+        table_error(error, MILENA_ERR_ARGUMENT, "Argumentos inválidos para sort");
+        return MILENA_ERR_ARGUMENT;
+    }
+    int index = milena_table_column_index(source, column_name);
+    if (index < 0) {
+        table_error(error, MILENA_ERR_DATA, "La columna de sort no existe");
+        return MILENA_ERR_DATA;
+    }
+    const MilenaTableColumn *column = &source->columns[index];
+    if (column->values.dtype != MILENA_DTYPE_INT64 &&
+        column->values.dtype != MILENA_DTYPE_FLOAT64) {
+        table_error(error, MILENA_ERR_UNSUPPORTED, "sort admite int64 y float64 en esta etapa");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+    size_t *order = source->row_count > 0 ?
+        (size_t *)malloc(source->row_count * sizeof(size_t)) : NULL;
+    if (source->row_count > 0 && !order) {
+        table_error(error, MILENA_ERR_MEMORY, "No se pudo reservar el orden de sort");
+        return MILENA_ERR_MEMORY;
+    }
+    for (size_t i = 0; i < source->row_count; i++) order[i] = i;
+    for (size_t i = 1; i < source->row_count; i++) {
+        size_t current = order[i];
+        size_t position = i;
+        while (position > 0 && compare_sort_rows(column, order[position - 1],
+                                                  current, ascending) > 0) {
+            order[position] = order[position - 1];
+            position--;
+        }
+        order[position] = current;
+    }
+    MilenaStatus status = table_copy_order(out, source, order, error);
+    free(order);
+    return status;
 }

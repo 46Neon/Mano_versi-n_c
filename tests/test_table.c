@@ -54,6 +54,35 @@ int main(void) {
     assert(filtered_amounts->validity[0] == true);
     assert(filtered_amounts->validity[1] == true);
 
+    const char *selected_names[] = {"amount"};
+    MilenaTable selected_columns;
+    expect_ok(milena_table_select_columns(&selected_columns, &table,
+                                          selected_names, 1, &error), &error);
+    assert(selected_columns.column_count == 1);
+    assert(strcmp(selected_columns.columns[0].name, "amount") == 0);
+
+    MilenaTable dropped;
+    expect_ok(milena_table_drop_null(&dropped, &table, &error), &error);
+    assert(dropped.row_count == 3);
+
+    MilenaTable sorted;
+    expect_ok(milena_table_sort(&sorted, &table, "amount", true, &error), &error);
+    const MilenaTableColumn *sorted_amounts = milena_table_column(&sorted, 1);
+    assert(sorted_amounts);
+    assert(((const double *)milena_array_const_data(&sorted_amounts->values))[0] == 100.0);
+    assert(((const double *)milena_array_const_data(&sorted_amounts->values))[1] == 300.0);
+    assert(((const double *)milena_array_const_data(&sorted_amounts->values))[2] == 400.0);
+    assert(sorted_amounts->validity[3] == false);
+
+    expect_ok(milena_table_fill_null_f64(&table, "amount", 0.0, &error), &error);
+    const MilenaTableColumn *filled_amounts = milena_table_column(&table, 1);
+    assert(filled_amounts);
+    assert(((const double *)milena_array_const_data(&filled_amounts->values))[1] == 0.0);
+    assert(filled_amounts->validity[1] == true);
+
+    milena_table_destroy(&sorted);
+    milena_table_destroy(&dropped);
+    milena_table_destroy(&selected_columns);
     milena_table_destroy(&filtered);
     milena_table_destroy(&table);
     milena_array_release(&filter);
