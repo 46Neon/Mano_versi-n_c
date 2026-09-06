@@ -681,7 +681,7 @@ MilenaStatus milena_period_fraction(const MilenaDate *start,
     if (status == MILENA_OK) status = milena_decimal_from_i64(
         &denominator, convention == MILENA_DAY_COUNT_ACTUAL_365 ? 365 : 360, error);
     if (status == MILENA_OK) status = milena_decimal_div(
-        out, &numerator, &denominator, MILENA_DECIMAL_MAX_SCALE,
+        out, &numerator, &denominator, 15,
         MILENA_ROUND_HALF_EVEN, error);
     return status;
 }
