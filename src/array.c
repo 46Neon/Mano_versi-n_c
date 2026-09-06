@@ -203,6 +203,92 @@ const void *milena_array_const_data(const MilenaArray *array) {
     return array->storage->data + array->byte_offset;
 }
 
+MilenaStatus milena_array_slice_view(MilenaArray *out,
+                                     const MilenaArray *source,
+                                     size_t axis, size_t start, size_t stop,
+                                     size_t step, MilenaError *error) {
+    if (!out || !source || !source->storage || out == source) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para crear una vista slice");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (axis >= source->ndim) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Eje fuera de rango para slice");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (step == 0) {
+        array_error(error, MILENA_ERR_ARGUMENT, "El paso de slice no puede ser cero");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (start > stop || stop > source->shape[axis]) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Los límites de slice están fuera de rango");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (source->strides[axis] < 0) {
+        array_error(error, MILENA_ERR_UNSUPPORTED, "Slice aún no admite strides negativos");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+
+    size_t *new_shape = (size_t *)calloc(source->ndim, sizeof(size_t));
+    ptrdiff_t *new_strides = (ptrdiff_t *)calloc(source->ndim, sizeof(ptrdiff_t));
+    if (!new_shape || !new_strides) {
+        free(new_shape);
+        free(new_strides);
+        array_error(error, MILENA_ERR_MEMORY, "No se pudo reservar la metadata del slice");
+        return MILENA_ERR_MEMORY;
+    }
+    memcpy(new_shape, source->shape, source->ndim * sizeof(size_t));
+    memcpy(new_strides, source->strides, source->ndim * sizeof(ptrdiff_t));
+
+    size_t selected = 0;
+    if (stop > start) selected = 1 + (stop - 1 - start) / step;
+    new_shape[axis] = selected;
+
+    size_t byte_delta = 0;
+    if (!milena_size_mul(start, (size_t)source->strides[axis], &byte_delta) ||
+        byte_delta > SIZE_MAX - source->byte_offset) {
+        free(new_shape);
+        free(new_strides);
+        array_error(error, MILENA_ERR_OVERFLOW, "El offset de slice desborda size_t");
+        return MILENA_ERR_OVERFLOW;
+    }
+    size_t new_offset = source->byte_offset + byte_delta;
+    if (new_offset > source->storage->nbytes ||
+        (selected > 0 && source->storage->nbytes - new_offset < source->itemsize)) {
+        free(new_shape);
+        free(new_strides);
+        array_error(error, MILENA_ERR_ARGUMENT, "El slice apunta fuera del buffer");
+        return MILENA_ERR_ARGUMENT;
+    }
+
+    size_t new_stride = 0;
+    if (!milena_size_mul((size_t)new_strides[axis], step, &new_stride) ||
+        new_stride > (size_t)PTRDIFF_MAX) {
+        free(new_shape);
+        free(new_strides);
+        array_error(error, MILENA_ERR_OVERFLOW, "El stride de slice desborda ptrdiff_t");
+        return MILENA_ERR_OVERFLOW;
+    }
+    new_strides[axis] = (ptrdiff_t)new_stride;
+
+    *out = *source;
+    out->shape = new_shape;
+    out->strides = new_strides;
+    out->size = 1;
+    for (size_t i = 0; i < out->ndim; i++) {
+        if (!milena_size_mul(out->size, out->shape[i], &out->size)) {
+            free(out->shape);
+            free(out->strides);
+            memset(out, 0, sizeof(*out));
+            array_error(error, MILENA_ERR_OVERFLOW, "El tamaño del slice desborda size_t");
+            return MILENA_ERR_OVERFLOW;
+        }
+    }
+    out->byte_offset = new_offset;
+    out->flags = source->flags & ~MILENA_ARRAY_OWN_DATA;
+    milena_array_retain(out);
+    return MILENA_OK;
+}
+
 static bool same_size(size_t left, size_t right) {
     return left == right;
 }

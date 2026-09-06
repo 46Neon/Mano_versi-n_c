@@ -63,6 +63,47 @@ static void test_broadcast_add(void) {
     milena_array_release(&matrix);
 }
 
+static void test_slice_views(void) {
+    const size_t shape[] = {3, 4};
+    const double values[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    MilenaArray source = {0};
+    MilenaArray columns = {0};
+    MilenaArray rows = {0};
+    MilenaError error;
+    milena_error_clear(&error);
+
+    expect_ok(milena_array_from_f64(&source, 2, shape, values, &error), &error);
+    expect_ok(milena_array_slice_view(&columns, &source, 1, 1, 4, 2, &error), &error);
+    expect_ok(milena_array_slice_view(&rows, &source, 0, 1, 3, 1, &error), &error);
+
+    const double expected_columns[] = {1, 3, 5, 7, 9, 11};
+    const double expected_rows[] = {4, 5, 6, 7, 8, 9, 10, 11};
+    assert(columns.shape[0] == 3 && columns.shape[1] == 2);
+    assert(columns.strides[1] == (ptrdiff_t)(2 * sizeof(double)));
+    assert(rows.shape[0] == 2 && rows.shape[1] == 4);
+    for (size_t row = 0; row < columns.shape[0]; row++) {
+        for (size_t column = 0; column < columns.shape[1]; column++) {
+            size_t index = row * columns.shape[1] + column;
+            const unsigned char *base = (const unsigned char *)milena_array_const_data(&columns);
+            const double *value = (const double *)(base + row * columns.strides[0] +
+                                                   column * columns.strides[1]);
+            assert(*value == expected_columns[index]);
+        }
+    }
+    for (size_t row = 0; row < rows.shape[0]; row++) {
+        for (size_t column = 0; column < rows.shape[1]; column++) {
+            const unsigned char *base = (const unsigned char *)milena_array_const_data(&rows);
+            const double *value = (const double *)(base + row * rows.strides[0] +
+                                                   column * rows.strides[1]);
+            assert(*value == expected_rows[row * rows.shape[1] + column]);
+        }
+    }
+
+    milena_array_release(&rows);
+    milena_array_release(&columns);
+    milena_array_release(&source);
+}
+
 static void test_sum_by_axis(void) {
     const size_t shape[] = {2, 3};
     const double values[] = {1, 2, 3, 4, 5, 6};
@@ -98,6 +139,7 @@ static void test_sum_by_axis(void) {
 int main(void) {
     test_creation_and_reshape();
     test_broadcast_add();
+    test_slice_views();
     test_sum_by_axis();
     puts("OK: MilenaArray creation, views, broadcasting and reductions");
     return 0;

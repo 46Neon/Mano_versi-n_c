@@ -48,6 +48,10 @@ MilenaStatus milena_array_reshape_view(MilenaArray *out,
                                         const MilenaArray *source,
                                         size_t ndim, const size_t *shape,
                                         MilenaError *error);
+MilenaStatus milena_array_slice_view(MilenaArray *out,
+                                     const MilenaArray *source,
+                                     size_t axis, size_t start, size_t stop,
+                                     size_t step, MilenaError *error);
 MilenaStatus milena_array_add(MilenaArray *out, const MilenaArray *left,
                               const MilenaArray *right, MilenaError *error);
 MilenaStatus milena_array_sum(MilenaArray *out, const MilenaArray *source,
