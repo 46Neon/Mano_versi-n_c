@@ -67,11 +67,15 @@ jobs:
           ./packaging/termux/generate-apt-repo.sh dist/inputs dist/apt
           gpg --batch --armor --export "$MANO_GPG_KEY_ID" > dist/apt/mano-archive-keyring.asc
 
-      - name: Publish APT repository to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./dist/apt
-          force_orphan: true
-          keep_files: false
+      - name: Install Netlify CLI
+        run: npm install --global netlify-cli
+
+      - name: Publish APT repository to Netlify
+        shell: bash
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN"
+          test -n "$NETLIFY_SITE_ID"
+          netlify deploy --dir=dist/apt --prod --site="$NETLIFY_SITE_ID" --message="Mano ${{ steps.release.outputs.tag }}"
