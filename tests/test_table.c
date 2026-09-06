@@ -84,6 +84,44 @@ int main(void) {
     milena_table_destroy(&dropped);
     milena_table_destroy(&selected_columns);
     milena_table_destroy(&filtered);
+
+    const int64_t groups[] = {1, 1, 2, 1};
+    const double group_values[] = {10.0, 20.0, 30.0, 0.0};
+    const bool group_validity[] = {true, true, true, false};
+    MilenaArray group_array = {0};
+    MilenaArray group_value_array = {0};
+    expect_ok(milena_array_from_i64(&group_array, 1, shape, groups, &error), &error);
+    expect_ok(milena_array_from_f64(&group_value_array, 1, shape, group_values, &error), &error);
+    MilenaTable grouped_source;
+    milena_table_init(&grouped_source);
+    expect_ok(milena_table_add_column_copy(&grouped_source, "group", &group_array,
+                                           NULL, &error), &error);
+    expect_ok(milena_table_add_column_copy(&grouped_source, "value", &group_value_array,
+                                           group_validity, &error), &error);
+
+    MilenaTable grouped_sum;
+    expect_ok(milena_table_group_by_aggregate(&grouped_sum, &grouped_source,
+                                              "group", "value", MILENA_AGG_SUM,
+                                              &error), &error);
+    const MilenaTableColumn *sum_values = milena_table_column(&grouped_sum, 1);
+    assert(grouped_sum.row_count == 2 && sum_values);
+    assert(((const double *)milena_array_const_data(&sum_values->values))[0] == 30.0);
+    assert(((const double *)milena_array_const_data(&sum_values->values))[1] == 30.0);
+
+    MilenaTable grouped_count;
+    expect_ok(milena_table_group_by_aggregate(&grouped_count, &grouped_source,
+                                              "group", "value", MILENA_AGG_COUNT,
+                                              &error), &error);
+    const MilenaTableColumn *count_values = milena_table_column(&grouped_count, 1);
+    assert(count_values);
+    assert(((const int64_t *)milena_array_const_data(&count_values->values))[0] == 2);
+    assert(((const int64_t *)milena_array_const_data(&count_values->values))[1] == 1);
+
+    milena_table_destroy(&grouped_count);
+    milena_table_destroy(&grouped_sum);
+    milena_table_destroy(&grouped_source);
+    milena_array_release(&group_value_array);
+    milena_array_release(&group_array);
     milena_table_destroy(&table);
     milena_array_release(&filter);
     milena_array_release(&amount_array);

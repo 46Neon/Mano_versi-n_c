@@ -20,6 +20,14 @@ typedef struct {
     size_t capacity;
 } MilenaTable;
 
+typedef enum {
+    MILENA_AGG_COUNT = 0,
+    MILENA_AGG_SUM,
+    MILENA_AGG_MEAN,
+    MILENA_AGG_MIN,
+    MILENA_AGG_MAX
+} MilenaAggregateOp;
+
 void milena_table_init(MilenaTable *table);
 void milena_table_destroy(MilenaTable *table);
 
@@ -54,6 +62,12 @@ MilenaStatus milena_table_sort(MilenaTable *out,
                                const char *column_name,
                                bool ascending,
                                MilenaError *error);
+MilenaStatus milena_table_group_by_aggregate(MilenaTable *out,
+                                             const MilenaTable *source,
+                                             const char *key_column,
+                                             const char *value_column,
+                                             MilenaAggregateOp operation,
+                                             MilenaError *error);
 
 #ifdef __cplusplus
 }

@@ -374,3 +374,177 @@ MilenaStatus milena_table_sort(MilenaTable *out,
     free(order);
     return status;
 }
+
+typedef struct {
+    size_t first_row;
+} MilenaGroup;
+
+static bool group_key_equal(const MilenaTableColumn *key,
+                            size_t left, size_t right) {
+    bool left_valid = !key->validity || key->validity[left];
+    bool right_valid = !key->validity || key->validity[right];
+    if (left_valid != right_valid) return false;
+    if (!left_valid) return true;
+    if (key->values.dtype == MILENA_DTYPE_INT64) {
+        const int64_t *data = (const int64_t *)milena_array_const_data(&key->values);
+        return data[left] == data[right];
+    }
+    if (key->values.dtype == MILENA_DTYPE_FLOAT64) {
+        const double *data = (const double *)milena_array_const_data(&key->values);
+        return data[left] == data[right];
+    }
+    return false;
+}
+
+static const char *aggregate_suffix(MilenaAggregateOp operation) {
+    switch (operation) {
+        case MILENA_AGG_COUNT: return "count";
+        case MILENA_AGG_SUM: return "sum";
+        case MILENA_AGG_MEAN: return "mean";
+        case MILENA_AGG_MIN: return "min";
+        case MILENA_AGG_MAX: return "max";
+        default: return "aggregate";
+    }
+}
+
+MilenaStatus milena_table_group_by_aggregate(MilenaTable *out,
+                                             const MilenaTable *source,
+                                             const char *key_column,
+                                             const char *value_column,
+                                             MilenaAggregateOp operation,
+                                             MilenaError *error) {
+    if (!out || !source || !key_column || !value_column || out == source) {
+        table_error(error, MILENA_ERR_ARGUMENT, "Argumentos inválidos para group_by");
+        return MILENA_ERR_ARGUMENT;
+    }
+    int key_index = milena_table_column_index(source, key_column);
+    int value_index = milena_table_column_index(source, value_column);
+    if (key_index < 0 || value_index < 0) {
+        table_error(error, MILENA_ERR_DATA, "La columna de group_by no existe");
+        return MILENA_ERR_DATA;
+    }
+    const MilenaTableColumn *key = &source->columns[key_index];
+    const MilenaTableColumn *value = &source->columns[value_index];
+    if (key->values.dtype != MILENA_DTYPE_INT64 &&
+        key->values.dtype != MILENA_DTYPE_FLOAT64) {
+        table_error(error, MILENA_ERR_UNSUPPORTED, "group_by admite claves int64 y float64 en esta etapa");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+    if (operation != MILENA_AGG_COUNT &&
+        value->values.dtype != MILENA_DTYPE_INT64 &&
+        value->values.dtype != MILENA_DTYPE_FLOAT64) {
+        table_error(error, MILENA_ERR_UNSUPPORTED, "aggregate admite valores int64 y float64 en esta etapa");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+
+    MilenaGroup *groups = source->row_count > 0 ?
+        (MilenaGroup *)calloc(source->row_count, sizeof(MilenaGroup)) : NULL;
+    if (source->row_count > 0 && !groups) {
+        table_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar los grupos");
+        return MILENA_ERR_MEMORY;
+    }
+    size_t group_count = 0;
+    for (size_t row = 0; row < source->row_count; row++) {
+        size_t group = 0;
+        while (group < group_count &&
+               !group_key_equal(key, groups[group].first_row, row)) group++;
+        if (group == group_count) groups[group_count++].first_row = row;
+    }
+
+    size_t group_shape[] = {group_count};
+    MilenaArray keys = {0};
+    MilenaDType aggregate_dtype = operation == MILENA_AGG_COUNT ?
+        MILENA_DTYPE_INT64 :
+        (operation == MILENA_AGG_MEAN ? MILENA_DTYPE_FLOAT64 : value->values.dtype);
+    MilenaArray aggregates = {0};
+    MilenaStatus status = milena_array_zeros(&keys, key->values.dtype,
+                                             1, group_shape, error);
+    if (status == MILENA_OK) status = milena_array_zeros(&aggregates, aggregate_dtype,
+                                                          1, group_shape, error);
+    if (status != MILENA_OK) {
+        free(groups);
+        milena_array_release(&keys);
+        milena_array_release(&aggregates);
+        return status;
+    }
+    bool *key_validity = group_count > 0 ?
+        (bool *)malloc(group_count * sizeof(bool)) : NULL;
+    bool *aggregate_validity = group_count > 0 ?
+        (bool *)malloc(group_count * sizeof(bool)) : NULL;
+    if (group_count > 0 && (!key_validity || !aggregate_validity)) {
+        free(groups); free(key_validity); free(aggregate_validity);
+        milena_array_release(&keys); milena_array_release(&aggregates);
+        table_error(error, MILENA_ERR_MEMORY, "No se pudo reservar validez de agregación");
+        return MILENA_ERR_MEMORY;
+    }
+
+    for (size_t group = 0; group < group_count; group++) {
+        size_t first = groups[group].first_row;
+        bool key_valid = !key->validity || key->validity[first];
+        key_validity[group] = key_valid;
+        memcpy((unsigned char *)milena_array_data(&keys) + group * keys.itemsize,
+               (const unsigned char *)milena_array_const_data(&key->values) +
+                   first * keys.itemsize,
+               keys.itemsize);
+
+        size_t valid_count = 0;
+        long double sum = 0.0L;
+        long double extreme = 0.0L;
+        bool extreme_set = false;
+        for (size_t row = 0; row < source->row_count; row++) {
+            if (!group_key_equal(key, first, row)) continue;
+            bool value_valid = !value->validity || value->validity[row];
+            if (!value_valid) continue;
+            valid_count++;
+            long double current = 0.0L;
+            if (value->values.dtype == MILENA_DTYPE_INT64) {
+                current = (long double)((const int64_t *)milena_array_const_data(&value->values))[row];
+            } else if (value->values.dtype == MILENA_DTYPE_FLOAT64) {
+                current = (long double)((const double *)milena_array_const_data(&value->values))[row];
+            }
+            sum += current;
+            if (!extreme_set ||
+                (operation == MILENA_AGG_MIN && current < extreme) ||
+                (operation == MILENA_AGG_MAX && current > extreme)) {
+                extreme = current;
+                extreme_set = true;
+            }
+        }
+
+        aggregate_validity[group] = operation == MILENA_AGG_COUNT || valid_count > 0;
+        if (operation == MILENA_AGG_COUNT) {
+            ((int64_t *)milena_array_data(&aggregates))[group] = (int64_t)valid_count;
+        } else if (operation == MILENA_AGG_MEAN) {
+            ((double *)milena_array_data(&aggregates))[group] = valid_count > 0 ?
+                (double)(sum / (long double)valid_count) : 0.0;
+        } else if (value->values.dtype == MILENA_DTYPE_INT64) {
+            int64_t result = operation == MILENA_AGG_SUM ? (int64_t)sum : (int64_t)extreme;
+            ((int64_t *)milena_array_data(&aggregates))[group] = result;
+        } else {
+            double result = operation == MILENA_AGG_SUM ? (double)sum : (double)extreme;
+            ((double *)milena_array_data(&aggregates))[group] = result;
+        }
+    }
+
+    char aggregate_name[256];
+    int written = snprintf(aggregate_name, sizeof(aggregate_name), "%s_%s",
+                           value_column, aggregate_suffix(operation));
+    if (written < 0 || (size_t)written >= sizeof(aggregate_name)) {
+        free(groups); free(key_validity); free(aggregate_validity);
+        milena_array_release(&keys); milena_array_release(&aggregates);
+        table_error(error, MILENA_ERR_OVERFLOW, "Nombre de agregación demasiado largo");
+        return MILENA_ERR_OVERFLOW;
+    }
+    milena_table_init(out);
+    status = milena_table_add_column_copy(out, key_column, &keys,
+                                           key_validity, error);
+    if (status == MILENA_OK) status = milena_table_add_column_copy(
+        out, aggregate_name, &aggregates, aggregate_validity, error);
+    free(groups);
+    free(key_validity);
+    free(aggregate_validity);
+    milena_array_release(&keys);
+    milena_array_release(&aggregates);
+    if (status != MILENA_OK) milena_table_destroy(out);
+    return status;
+}
