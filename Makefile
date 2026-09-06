@@ -1,7 +1,7 @@
 CC ?= cc
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wshadow -Wconversion -O2 -Iinclude
 LDFLAGS ?= -lm
-SOURCES = src/common.c src/array.c src/table.c src/schema.c src/dataset.c src/analysis.c src/script.c src/main.c \
+SOURCES = src/common.c src/array.c src/table.c src/finance.c src/schema.c src/dataset.c src/analysis.c src/script.c src/main.c \
           src/sst_dates.c src/sst_model.c src/sst_stats.c src/sst_histogram.c \
           src/sst_rates.c src/sst_report.c src/sst_report_advanced.c \
           src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
@@ -9,7 +9,7 @@ SOURCES = src/common.c src/array.c src/table.c src/schema.c src/dataset.c src/an
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = milena
 
-.PHONY: all clean test test-sst test-array test-table debug
+.PHONY: all clean test test-sst test-array test-table test-finance debug
 
 test-array: tests/test_array
 	./tests/test_array
@@ -22,6 +22,14 @@ test-table: tests/test_table
 
 tests/test_table: tests/test_table.c src/table.c src/array.c src/common.c
 	$(CC) $(CFLAGS) tests/test_table.c src/table.c src/array.c src/common.c $(LDFLAGS) -o $@
+
+.PHONY: test-finance
+
+test-finance: tests/test_finance
+	./tests/test_finance
+
+tests/test_finance: tests/test_finance.c src/finance.c src/common.c
+	$(CC) $(CFLAGS) tests/test_finance.c src/finance.c src/common.c $(LDFLAGS) -o $@
 
 SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
                    src/sst_stats.c src/sst_histogram.c src/sst_rates.c \
@@ -47,7 +55,7 @@ debug:
 	$(MAKE) clean
 	$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -g3 -O0 -fsanitize=address,undefined -Iinclude' LDFLAGS='-fsanitize=address,undefined -lm'
 
-test: $(TARGET) test-sst test-array test-table
+test: $(TARGET) test-sst test-array test-table test-finance
 	./tests/run_tests.sh
 
 clean:

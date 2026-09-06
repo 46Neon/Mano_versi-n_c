@@ -1,0 +1,62 @@
+#ifndef MILENA_FINANCE_H
+#define MILENA_FINANCE_H
+
+#include "common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MILENA_DECIMAL_MAX_SCALE 18
+#define MILENA_CURRENCY_CODE_SIZE 4
+
+typedef struct {
+    int64_t coefficient;
+    int32_t scale;
+} MilenaDecimal;
+
+typedef struct {
+    MilenaDecimal amount;
+    char currency[MILENA_CURRENCY_CODE_SIZE];
+} MilenaMoney;
+
+typedef enum {
+    MILENA_RATE_NOMINAL = 0,
+    MILENA_RATE_EFFECTIVE,
+    MILENA_RATE_PERIODIC
+} MilenaRateKind;
+
+typedef struct {
+    MilenaDecimal value;
+    MilenaRateKind kind;
+    uint32_t periods_per_year;
+} MilenaRate;
+
+MilenaStatus milena_decimal_from_i64(MilenaDecimal *out, int64_t value,
+                                     MilenaError *error);
+MilenaStatus milena_decimal_from_string(MilenaDecimal *out, const char *text,
+                                        MilenaError *error);
+MilenaStatus milena_decimal_add(MilenaDecimal *out, const MilenaDecimal *left,
+                                const MilenaDecimal *right, MilenaError *error);
+MilenaStatus milena_decimal_sub(MilenaDecimal *out, const MilenaDecimal *left,
+                                const MilenaDecimal *right, MilenaError *error);
+MilenaStatus milena_decimal_compare(const MilenaDecimal *left,
+                                    const MilenaDecimal *right, int *result,
+                                    MilenaError *error);
+
+MilenaStatus milena_money_init(MilenaMoney *out, MilenaDecimal amount,
+                               const char *currency, MilenaError *error);
+MilenaStatus milena_money_add(MilenaMoney *out, const MilenaMoney *left,
+                              const MilenaMoney *right, MilenaError *error);
+MilenaStatus milena_money_sub(MilenaMoney *out, const MilenaMoney *left,
+                              const MilenaMoney *right, MilenaError *error);
+
+MilenaStatus milena_rate_init(MilenaRate *out, MilenaDecimal value,
+                              MilenaRateKind kind, uint32_t periods_per_year,
+                              MilenaError *error);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
