@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$Version = if ($env:MANO_VERSION) { $env:MANO_VERSION } else { '0.1.0' }
+$Version = if ($env:MANO_VERSION) { $env:MANO_VERSION } else { '0.1.1' }
 $OutputDir = Join-Path $Root 'dist/windows'
 $Output = Join-Path $OutputDir 'mano.exe'
 

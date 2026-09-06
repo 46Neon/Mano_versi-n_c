@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="${MANO_VERSION:-0.1.0}"
+VERSION="${MANO_VERSION:-0.1.1}"
 PREFIX_DIR="${PREFIX:-}"
 
 if [[ -z "$PREFIX_DIR" || "$PREFIX_DIR" != */usr ]]; then
