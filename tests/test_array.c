@@ -140,6 +140,33 @@ static void test_slice_views(void) {
     milena_array_release(&source);
 }
 
+static void test_transpose_and_reshape_copy(void) {
+    const size_t shape[] = {2, 3};
+    const double values[] = {1, 2, 3, 4, 5, 6};
+    const size_t axes[] = {1, 0};
+    const size_t flat_shape[] = {6};
+    MilenaArray source = {0};
+    MilenaArray transposed = {0};
+    MilenaArray flattened = {0};
+    MilenaError error;
+    milena_error_clear(&error);
+
+    expect_ok(milena_array_from_f64(&source, 2, shape, values, &error), &error);
+    expect_ok(milena_array_transpose_view(&transposed, &source, axes, &error), &error);
+    expect_ok(milena_array_reshape_copy(&flattened, &transposed, 1, flat_shape, &error), &error);
+
+    const double expected[] = {1, 4, 2, 5, 3, 6};
+    assert(transposed.shape[0] == 3 && transposed.shape[1] == 2);
+    assert(transposed.strides[0] == (ptrdiff_t)(sizeof(double) * 1));
+    assert(transposed.strides[1] == (ptrdiff_t)(sizeof(double) * 3));
+    assert(flattened.shape[0] == 6);
+    assert(memcmp(milena_array_const_data(&flattened), expected, sizeof(expected)) == 0);
+
+    milena_array_release(&flattened);
+    milena_array_release(&transposed);
+    milena_array_release(&source);
+}
+
 static void test_boolean_masks_and_where(void) {
     const size_t shape[] = {2, 3};
     const double values[] = {1, -2, 3, 4, -5, 6};
@@ -221,6 +248,7 @@ int main(void) {
     test_creation_and_reshape();
     test_broadcast_add();
     test_slice_views();
+    test_transpose_and_reshape_copy();
     test_boolean_masks_and_where();
     test_sum_by_axis();
     puts("OK: MilenaArray creation, views, broadcasting and reductions");

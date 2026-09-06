@@ -328,6 +328,50 @@ MilenaStatus milena_array_slice_view(MilenaArray *out,
     return MILENA_OK;
 }
 
+MilenaStatus milena_array_transpose_view(MilenaArray *out,
+                                         const MilenaArray *source,
+                                         const size_t *axes, MilenaError *error) {
+    if (!out || !source || !source->storage || out == source) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para transpose");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t *new_shape = source->ndim > 0 ?
+        (size_t *)calloc(source->ndim, sizeof(size_t)) : NULL;
+    ptrdiff_t *new_strides = source->ndim > 0 ?
+        (ptrdiff_t *)calloc(source->ndim, sizeof(ptrdiff_t)) : NULL;
+    bool *used = source->ndim > 0 ?
+        (bool *)calloc(source->ndim, sizeof(bool)) : NULL;
+    if (source->ndim > 0 && (!new_shape || !new_strides || !used)) {
+        free(new_shape);
+        free(new_strides);
+        free(used);
+        array_error(error, MILENA_ERR_MEMORY, "No se pudo reservar metadata de transpose");
+        return MILENA_ERR_MEMORY;
+    }
+
+    for (size_t axis = 0; axis < source->ndim; axis++) {
+        size_t source_axis = axes ? axes[axis] : source->ndim - 1 - axis;
+        if (source_axis >= source->ndim || used[source_axis]) {
+            free(new_shape);
+            free(new_strides);
+            free(used);
+            array_error(error, MILENA_ERR_ARGUMENT, "Los ejes de transpose no forman una permutación");
+            return MILENA_ERR_ARGUMENT;
+        }
+        used[source_axis] = true;
+        new_shape[axis] = source->shape[source_axis];
+        new_strides[axis] = source->strides[source_axis];
+    }
+    free(used);
+
+    *out = *source;
+    out->shape = new_shape;
+    out->strides = new_strides;
+    out->flags = source->flags & ~MILENA_ARRAY_OWN_DATA;
+    milena_array_retain(out);
+    return MILENA_OK;
+}
+
 static bool same_size(size_t left, size_t right) {
     return left == right;
 }
@@ -416,6 +460,40 @@ static ptrdiff_t linear_offset(const MilenaArray *array, size_t index,
                               size_t *coordinates) {
     linear_coordinates(array, index, coordinates);
     return element_offset(array, coordinates, array->ndim);
+}
+
+MilenaStatus milena_array_reshape_copy(MilenaArray *out,
+                                       const MilenaArray *source,
+                                       size_t ndim, const size_t *shape,
+                                       MilenaError *error) {
+    if (!out || !source || !source->storage || out == source) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para reshape copy");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t requested_size = 0;
+    MilenaStatus status = array_size(ndim, shape, &requested_size, error);
+    if (status != MILENA_OK) return status;
+    if (requested_size != source->size) {
+        array_error(error, MILENA_ERR_ARGUMENT, "reshape copy no conserva el número de elementos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    status = allocate_array(out, source->dtype, ndim, shape, error);
+    if (status != MILENA_OK) return status;
+
+    size_t *coordinates = source->ndim > 0 ?
+        (size_t *)calloc(source->ndim, sizeof(size_t)) : NULL;
+    if (source->ndim > 0 && !coordinates) {
+        milena_array_release(out);
+        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas de reshape copy");
+        return MILENA_ERR_MEMORY;
+    }
+    for (size_t i = 0; i < source->size; i++) {
+        ptrdiff_t offset = linear_offset(source, i, coordinates);
+        memcpy(out->storage->data + i * out->itemsize,
+               source->storage->data + offset, out->itemsize);
+    }
+    free(coordinates);
+    return MILENA_OK;
 }
 
 MilenaStatus milena_array_greater_f64(MilenaArray *out,
