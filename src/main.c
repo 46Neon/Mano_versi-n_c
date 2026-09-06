@@ -8,7 +8,7 @@ static void usage(const char *program) {
     printf("Uso:\n");
     printf("  %s analizar <csv> <json>\n", program);
     printf("  %s perfil <csv> <json>\n", program);
-    printf("  %s run <archivo.mano>\n", program);
+    printf("  %s run <archivo.milena>\n", program);
     printf("  %s inspect <csv>\n", program);
 }
 

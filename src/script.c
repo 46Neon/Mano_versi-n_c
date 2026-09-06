@@ -110,7 +110,7 @@ static bool parent_path(const char *path, char *out, size_t out_size) {
 
 /*
  * Busca los datos primero desde el directorio actual y luego desde el
- * directorio del script y sus padres. Esto permite ejecutar un .mano desde
+ * directorio del script y sus padres. Esto permite ejecutar un .milena desde
  * cualquier carpeta sin romper scripts que usan rutas relativas al proyecto.
  */
 static MilenaStatus resolve_input_path(const char *script_file, const char *requested,

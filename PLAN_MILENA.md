@@ -7,7 +7,7 @@ Convertir Milena en un lenguaje y motor C17 de análisis de datos general, repro
 ## Fase 0 — Identidad y base estable
 
 - Renombrar el proyecto, ejecutable, paquete, documentación y símbolos públicos a `Milena`.
-- Mantener temporalmente la extensión `.mano` para no cambiar todavía la sintaxis ni romper scripts existentes.
+- Adoptar `.milena` como extensión canónica y conservar la lectura de `.mano` durante una transición documentada.
 - Crear una versión de transición con pruebas de regresión antes de añadir funciones nuevas.
 - Actualizar la distribución y los instaladores después de validar el nuevo nombre.
 - Mantener licencias, historial limpio, compilación reproducible y pruebas con GCC, Clang, ASan y UBSan.
@@ -56,7 +56,7 @@ Convertir Milena en un lenguaje y motor C17 de análisis de datos general, repro
 
 ## Fase 6 — Sintaxis
 
-La sintaxis se revisará después de estabilizar el modelo de datos y la lógica financiera. En ese momento se decidirá si conviene mantener compatibilidad con `.mano`, introducir `.milena` o soportar ambas extensiones durante una transición documentada.
+La sintaxis se revisará después de estabilizar el modelo de datos y la lógica financiera. La extensión `.milena` será la forma recomendada; `.mano` seguirá siendo aceptada temporalmente para compatibilidad.
 
 ## Fase 7 — Madurez para Termux
 

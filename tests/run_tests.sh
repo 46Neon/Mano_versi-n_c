@@ -31,10 +31,10 @@ CSV
 sed \
   -e "s#datos/tu_archivo.csv#$tmp_dir/clientes.csv#g" \
   -e "s#reporte_clientes.json#$tmp_dir/reporte_clientes.json#g" \
-  "$project_dir/examples/clasificacion_binaria.mano" \
-  > "$tmp_dir/clasificacion_binaria.mano"
+  "$project_dir/examples/clasificacion_binaria.milena" \
+  > "$tmp_dir/clasificacion_binaria.milena"
 
-./milena run "$tmp_dir/clasificacion_binaria.mano" >/dev/null
+./milena run "$tmp_dir/clasificacion_binaria.milena" >/dev/null
 test -s "$tmp_dir/reporte_clientes.json"
 test -s "$tmp_dir/reporte_clientes.json.sst.json"
 grep -q '"salidas_binarias"' "$tmp_dir/reporte_clientes.json"

@@ -18,6 +18,8 @@ El soporte SST es el primer dominio desarrollado, no el límite del proyecto. La
 
 Milena analiza datos existentes y debe mostrar advertencias cuando un método sea aproximado o cuando no permita extraer conclusiones causales.
 
+La extensión recomendada para los scripts es `.milena`. Durante la transición, el cargador de módulos también acepta `.mano` para conservar compatibilidad con scripts anteriores.
+
 ## Compilar
 
 ```bash
@@ -37,7 +39,7 @@ La compilación utiliza C17 y advertencias estrictas. En un entorno de validaci�
 ```bash
 ./milena analizar mi_archivo.csv reporte_milena.json
 ./milena perfil mi_archivo.csv perfil.json
-./milena run examples/clasificacion_binaria.mano
+./milena run examples/clasificacion_binaria.milena
 ./milena inspect mi_archivo.csv
 ```
 
@@ -115,7 +117,7 @@ Un comando desconocido no se ignora. Milena produce un error explícito para evi
 UNSUPPORTED: Comando Milena no reconocido; no se ignorará silenciosamente
 ```
 
-Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.mano` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
+Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.milena` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
 
 ## Reportes y advertencias
 
@@ -142,7 +144,7 @@ Estas advertencias son controles de interpretación, no una certificación legal
 Para que un análisis sea reproducible, el flujo profesional debe conservar:
 
 - archivo CSV original;
-- script `.mano` utilizado;
+- script `.milena` utilizado;
 - configuración y factor de exposición;
 - versión del motor;
 - reporte generado;
@@ -221,7 +223,7 @@ Milena puede ayudar a identificar áreas con mayor frecuencia, cambios temporale
 - No gestiona expedientes médicos.
 - No propone automáticamente medidas de control.
 - Algunos métodos inferenciales son aproximados.
-- La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.mano` sigue pendiente.
+- La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.milena` sigue pendiente.
 - La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
 
 ## Instalación en Termux mediante APT
