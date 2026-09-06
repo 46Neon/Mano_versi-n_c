@@ -6,7 +6,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VERSION="${MANO_VERSION:-0.1.0}"
-KEY_ID="${MANO_GPG_KEY_ID:?Define MANO_GPG_KEY_ID con la clave de publicación}"
+RAW_KEY_ID="${MANO_GPG_KEY_ID:?Define MANO_GPG_KEY_ID con la clave de publicación}"
+KEY_ID="$(printf '%s' "$RAW_KEY_ID" | tr -d '[:space:]')"
+KEY_ID="${KEY_ID#rsa3072/}"
+KEY_ID="${KEY_ID#0x}"
+if [[ ! "$KEY_ID" =~ ^[[:xdigit:]]{8,64}$ ]]; then
+    echo "MANO_GPG_KEY_ID no contiene un identificador hexadecimal válido" >&2
+    exit 1
+fi
 INPUT_DIR="${1:-$ROOT_DIR/dist/termux}"
 OUTPUT_DIR="${2:-$ROOT_DIR/dist/apt}"
 
