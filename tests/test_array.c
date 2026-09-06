@@ -140,6 +140,50 @@ static void test_slice_views(void) {
     milena_array_release(&source);
 }
 
+static void test_boolean_masks_and_where(void) {
+    const size_t shape[] = {2, 3};
+    const double values[] = {1, -2, 3, 4, -5, 6};
+    const double true_values[] = {10, 20, 30, 40, 50, 60};
+    const double false_values[] = {-10, -20, -30, -40, -50, -60};
+    MilenaArray source = {0};
+    MilenaArray mask = {0};
+    MilenaArray selected = {0};
+    MilenaArray indices = {0};
+    MilenaArray when_true = {0};
+    MilenaArray when_false = {0};
+    MilenaArray chosen = {0};
+    MilenaError error;
+    milena_error_clear(&error);
+
+    expect_ok(milena_array_from_f64(&source, 2, shape, values, &error), &error);
+    expect_ok(milena_array_greater_f64(&mask, &source, 0.0, &error), &error);
+    expect_ok(milena_array_boolean_mask(&selected, &source, &mask, &error), &error);
+    expect_ok(milena_array_nonzero(&indices, &mask, &error), &error);
+    expect_ok(milena_array_from_f64(&when_true, 2, shape, true_values, &error), &error);
+    expect_ok(milena_array_from_f64(&when_false, 2, shape, false_values, &error), &error);
+    expect_ok(milena_array_where(&chosen, &mask, &when_true, &when_false, &error), &error);
+
+    const double expected_selected[] = {1, 3, 4, 6};
+    const int64_t expected_indices[] = {0, 2, 3, 5};
+    const double expected_chosen[] = {10, -20, 30, 40, -50, 60};
+    assert(selected.ndim == 1 && selected.shape[0] == 4);
+    assert(memcmp(milena_array_const_data(&selected), expected_selected,
+                  sizeof(expected_selected)) == 0);
+    assert(indices.shape[0] == 4);
+    assert(memcmp(milena_array_const_data(&indices), expected_indices,
+                  sizeof(expected_indices)) == 0);
+    assert(memcmp(milena_array_const_data(&chosen), expected_chosen,
+                  sizeof(expected_chosen)) == 0);
+
+    milena_array_release(&chosen);
+    milena_array_release(&when_false);
+    milena_array_release(&when_true);
+    milena_array_release(&indices);
+    milena_array_release(&selected);
+    milena_array_release(&mask);
+    milena_array_release(&source);
+}
+
 static void test_sum_by_axis(void) {
     const size_t shape[] = {2, 3};
     const double values[] = {1, 2, 3, 4, 5, 6};
@@ -177,6 +221,7 @@ int main(void) {
     test_creation_and_reshape();
     test_broadcast_add();
     test_slice_views();
+    test_boolean_masks_and_where();
     test_sum_by_axis();
     puts("OK: MilenaArray creation, views, broadcasting and reductions");
     return 0;

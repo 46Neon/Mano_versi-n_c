@@ -55,6 +55,20 @@ MilenaStatus milena_array_from_i64(MilenaArray *out, size_t ndim,
                                    MilenaError *error);
 MilenaStatus milena_array_cast(MilenaArray *out, const MilenaArray *source,
                                MilenaDType dtype, MilenaError *error);
+MilenaStatus milena_array_greater_f64(MilenaArray *out,
+                                      const MilenaArray *source,
+                                      double threshold, MilenaError *error);
+MilenaStatus milena_array_boolean_mask(MilenaArray *out,
+                                       const MilenaArray *source,
+                                       const MilenaArray *mask,
+                                       MilenaError *error);
+MilenaStatus milena_array_nonzero(MilenaArray *out, const MilenaArray *mask,
+                                  MilenaError *error);
+MilenaStatus milena_array_where(MilenaArray *out,
+                                const MilenaArray *condition,
+                                const MilenaArray *when_true,
+                                const MilenaArray *when_false,
+                                MilenaError *error);
 
 void milena_array_retain(MilenaArray *array);
 void milena_array_release(MilenaArray *array);

@@ -393,6 +393,178 @@ static ptrdiff_t element_offset(const MilenaArray *array,
     return offset;
 }
 
+static void linear_coordinates(const MilenaArray *array, size_t index,
+                               size_t *coordinates) {
+    size_t remaining = index;
+    for (size_t axis = array->ndim; axis > 0; axis--) {
+        size_t current = axis - 1;
+        coordinates[current] = array->shape[current] == 0 ? 0 :
+            remaining % array->shape[current];
+        if (array->shape[current] > 0) remaining /= array->shape[current];
+    }
+}
+
+static bool same_shape(const MilenaArray *left, const MilenaArray *right) {
+    if (!left || !right || left->ndim != right->ndim) return false;
+    for (size_t axis = 0; axis < left->ndim; axis++) {
+        if (left->shape[axis] != right->shape[axis]) return false;
+    }
+    return true;
+}
+
+static ptrdiff_t linear_offset(const MilenaArray *array, size_t index,
+                              size_t *coordinates) {
+    linear_coordinates(array, index, coordinates);
+    return element_offset(array, coordinates, array->ndim);
+}
+
+MilenaStatus milena_array_greater_f64(MilenaArray *out,
+                                      const MilenaArray *source,
+                                      double threshold, MilenaError *error) {
+    if (!out || !source || !source->storage || out == source ||
+        source->dtype != MILENA_DTYPE_FLOAT64) {
+        array_error(error, MILENA_ERR_TYPE, "greater_f64 requiere un array float64");
+        return MILENA_ERR_TYPE;
+    }
+    MilenaStatus status = allocate_array(out, MILENA_DTYPE_BOOL,
+                                         source->ndim, source->shape, error);
+    if (status != MILENA_OK) return status;
+    size_t *coordinates = source->ndim > 0 ?
+        (size_t *)calloc(source->ndim, sizeof(size_t)) : NULL;
+    if (source->ndim > 0 && !coordinates) {
+        milena_array_release(out);
+        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas de comparación");
+        return MILENA_ERR_MEMORY;
+    }
+    bool *output_data = (bool *)out->storage->data;
+    for (size_t i = 0; i < source->size; i++) {
+        ptrdiff_t offset = linear_offset(source, i, coordinates);
+        output_data[i] = *(const double *)(source->storage->data + offset) > threshold;
+    }
+    free(coordinates);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_boolean_mask(MilenaArray *out,
+                                       const MilenaArray *source,
+                                       const MilenaArray *mask,
+                                       MilenaError *error) {
+    if (!out || !source || !mask || !source->storage || !mask->storage ||
+        out == source || out == mask || mask->dtype != MILENA_DTYPE_BOOL ||
+        !same_shape(source, mask)) {
+        array_error(error, MILENA_ERR_ARGUMENT, "La máscara debe ser bool y tener la forma del array");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t *coordinates = source->ndim > 0 ?
+        (size_t *)calloc(source->ndim, sizeof(size_t)) : NULL;
+    if (source->ndim > 0 && !coordinates) {
+        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas de máscara");
+        return MILENA_ERR_MEMORY;
+    }
+    size_t selected = 0;
+    for (size_t i = 0; i < mask->size; i++) {
+        ptrdiff_t offset = linear_offset(mask, i, coordinates);
+        if (*(const bool *)(mask->storage->data + offset)) selected++;
+    }
+    size_t output_shape[] = {selected};
+    MilenaStatus status = allocate_array(out, source->dtype, 1, output_shape, error);
+    if (status != MILENA_OK) {
+        free(coordinates);
+        return status;
+    }
+    unsigned char *output_data = out->storage->data;
+    size_t output_index = 0;
+    for (size_t i = 0; i < source->size; i++) {
+        ptrdiff_t mask_offset = linear_offset(mask, i, coordinates);
+        if (!*(const bool *)(mask->storage->data + mask_offset)) continue;
+        ptrdiff_t source_offset = linear_offset(source, i, coordinates);
+        memcpy(output_data + output_index * out->itemsize,
+               source->storage->data + source_offset, out->itemsize);
+        output_index++;
+    }
+    free(coordinates);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_nonzero(MilenaArray *out, const MilenaArray *mask,
+                                  MilenaError *error) {
+    if (!out || !mask || !mask->storage || out == mask ||
+        mask->dtype != MILENA_DTYPE_BOOL) {
+        array_error(error, MILENA_ERR_TYPE, "nonzero requiere una máscara bool");
+        return MILENA_ERR_TYPE;
+    }
+    size_t *coordinates = mask->ndim > 0 ?
+        (size_t *)calloc(mask->ndim, sizeof(size_t)) : NULL;
+    if (mask->ndim > 0 && !coordinates) {
+        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas de nonzero");
+        return MILENA_ERR_MEMORY;
+    }
+    size_t selected = 0;
+    for (size_t i = 0; i < mask->size; i++) {
+        ptrdiff_t offset = linear_offset(mask, i, coordinates);
+        if (*(const bool *)(mask->storage->data + offset)) selected++;
+    }
+    size_t output_shape[] = {selected};
+    MilenaStatus status = allocate_array(out, MILENA_DTYPE_INT64, 1,
+                                         output_shape, error);
+    if (status != MILENA_OK) {
+        free(coordinates);
+        return status;
+    }
+    int64_t *output_data = (int64_t *)out->storage->data;
+    size_t output_index = 0;
+    for (size_t i = 0; i < mask->size; i++) {
+        ptrdiff_t offset = linear_offset(mask, i, coordinates);
+        if (*(const bool *)(mask->storage->data + offset)) {
+            if (i > (size_t)INT64_MAX) {
+                free(coordinates);
+                milena_array_release(out);
+                array_error(error, MILENA_ERR_OVERFLOW, "El índice no cabe en int64");
+                return MILENA_ERR_OVERFLOW;
+            }
+            output_data[output_index++] = (int64_t)i;
+        }
+    }
+    free(coordinates);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_where(MilenaArray *out,
+                                const MilenaArray *condition,
+                                const MilenaArray *when_true,
+                                const MilenaArray *when_false,
+                                MilenaError *error) {
+    if (!out || !condition || !when_true || !when_false ||
+        !condition->storage || !when_true->storage || !when_false->storage ||
+        out == condition || out == when_true || out == when_false ||
+        condition->dtype != MILENA_DTYPE_BOOL ||
+        !same_shape(condition, when_true) || !same_shape(when_true, when_false)) {
+        array_error(error, MILENA_ERR_ARGUMENT, "where requiere tres arrays de la misma forma");
+        return MILENA_ERR_ARGUMENT;
+    }
+    MilenaStatus status = allocate_array(out, when_true->dtype,
+                                         when_true->ndim, when_true->shape, error);
+    if (status != MILENA_OK) return status;
+    size_t *coordinates = when_true->ndim > 0 ?
+        (size_t *)calloc(when_true->ndim, sizeof(size_t)) : NULL;
+    if (when_true->ndim > 0 && !coordinates) {
+        milena_array_release(out);
+        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas de where");
+        return MILENA_ERR_MEMORY;
+    }
+    for (size_t i = 0; i < when_true->size; i++) {
+        ptrdiff_t condition_offset = linear_offset(condition, i, coordinates);
+        ptrdiff_t true_offset = linear_offset(when_true, i, coordinates);
+        ptrdiff_t false_offset = linear_offset(when_false, i, coordinates);
+        const unsigned char *selected = *(const bool *)(condition->storage->data + condition_offset) ?
+            when_true->storage->data + true_offset :
+            when_false->storage->data + false_offset;
+        memcpy(out->storage->data + i * out->itemsize, selected, out->itemsize);
+    }
+    free(coordinates);
+    return MILENA_OK;
+}
+
 static bool array_read_real(const MilenaArray *source, size_t index,
                             long double *value) {
     size_t *coordinates = source->ndim > 0 ?
