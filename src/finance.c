@@ -861,8 +861,13 @@ void milena_amortization_schedule_destroy(MilenaAmortizationSchedule *schedule) 
     memset(schedule, 0, sizeof(*schedule));
 }
 
-static MilenaStatus date_add_months(MilenaDate *out, MilenaDate date,
+MilenaStatus milena_date_add_months(MilenaDate *out, MilenaDate date,
                                     uint32_t months, MilenaError *error) {
+    MilenaDate validated;
+    MilenaStatus status = milena_date_init(&validated, date.year, date.month,
+                                           date.day, error);
+    if (status != MILENA_OK) return status;
+    date = validated;
     uint64_t total = (uint64_t)(date.year < 0 ? 0 : date.year) * 12u +
                      (uint64_t)(date.month - 1u) + months;
     int32_t year = (int32_t)(total / 12u);
@@ -870,6 +875,27 @@ static MilenaStatus date_add_months(MilenaDate *out, MilenaDate date,
     uint8_t day = date.day > date_month_days(year, month) ?
         date_month_days(year, month) : date.day;
     return milena_date_init(out, year, month, day, error);
+}
+
+MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
+                                    uint32_t periods,
+                                    MilenaPaymentFrequency frequency,
+                                    MilenaError *error) {
+    uint32_t multiplier = 0;
+    switch (frequency) {
+        case MILENA_PAYMENT_MONTHLY: multiplier = 1u; break;
+        case MILENA_PAYMENT_QUARTERLY: multiplier = 3u; break;
+        case MILENA_PAYMENT_SEMIANNUAL: multiplier = 6u; break;
+        case MILENA_PAYMENT_ANNUAL: multiplier = 12u; break;
+        default:
+            finance_error(error, MILENA_ERR_ARGUMENT, "Frecuencia de calendario inválida");
+            return MILENA_ERR_ARGUMENT;
+    }
+    if (periods > UINT32_MAX / multiplier) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Período de calendario fuera de rango");
+        return MILENA_ERR_OVERFLOW;
+    }
+    return milena_date_add_months(out, date, periods * multiplier, error);
 }
 
 MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
@@ -892,7 +918,7 @@ MilenaStatus milena_amortization_build(MilenaAmortizationSchedule *schedule,
     MilenaDecimal balance = principal.amount;
     for (uint32_t period = 1; period <= periods; period++) {
         MilenaDate date;
-        status = date_add_months(&date, first_payment_date, period - 1u, error);
+        status = milena_date_add_months(&date, first_payment_date, period - 1u, error);
         if (status != MILENA_OK) break;
         MilenaDecimal interest;
         MilenaDecimal principal_paid;

@@ -80,6 +80,15 @@ int main(void) {
     expect_ok(milena_date_init(&end, 2024, 2, 1, &error), &error);
     expect_ok(milena_date_days_between(&start, &end, &days, &error), &error);
     assert(days == 31);
+    MilenaDate january_end;
+    MilenaDate february_end;
+    MilenaDate april_end;
+    expect_ok(milena_date_init(&january_end, 2024, 1, 31, &error), &error);
+    expect_ok(milena_date_add_months(&february_end, january_end, 1, &error), &error);
+    assert(february_end.month == 2 && february_end.day == 29);
+    expect_ok(milena_date_add_period(&april_end, january_end, 1,
+                                     MILENA_PAYMENT_QUARTERLY, &error), &error);
+    assert(april_end.month == 4 && april_end.day == 30);
     MilenaDecimal fraction;
     expect_ok(milena_period_fraction(&start, &end, MILENA_DAY_COUNT_ACTUAL_365,
                                       &fraction, &error), &error);

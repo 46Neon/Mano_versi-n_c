@@ -134,10 +134,23 @@ MilenaStatus milena_date_compare(const MilenaDate *left, const MilenaDate *right
 MilenaStatus milena_date_days_between(const MilenaDate *start,
                                       const MilenaDate *end,
                                       int64_t *days, MilenaError *error);
+typedef enum {
+    MILENA_PAYMENT_MONTHLY = 0,
+    MILENA_PAYMENT_QUARTERLY,
+    MILENA_PAYMENT_SEMIANNUAL,
+    MILENA_PAYMENT_ANNUAL
+} MilenaPaymentFrequency;
+
 MilenaStatus milena_period_fraction(const MilenaDate *start,
                                     const MilenaDate *end,
                                     MilenaDayCount convention,
                                     MilenaDecimal *out, MilenaError *error);
+MilenaStatus milena_date_add_months(MilenaDate *out, MilenaDate date,
+                                     uint32_t months, MilenaError *error);
+MilenaStatus milena_date_add_period(MilenaDate *out, MilenaDate date,
+                                    uint32_t periods,
+                                    MilenaPaymentFrequency frequency,
+                                    MilenaError *error);
 
 typedef struct {
     MilenaDate date;
