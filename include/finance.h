@@ -32,6 +32,14 @@ typedef struct {
     uint32_t periods_per_year;
 } MilenaRate;
 
+typedef enum {
+    MILENA_ROUND_TOWARD_ZERO = 0,
+    MILENA_ROUND_HALF_UP,
+    MILENA_ROUND_HALF_EVEN,
+    MILENA_ROUND_FLOOR,
+    MILENA_ROUND_CEILING
+} MilenaRoundingMode;
+
 MilenaStatus milena_decimal_from_i64(MilenaDecimal *out, int64_t value,
                                      MilenaError *error);
 MilenaStatus milena_decimal_from_string(MilenaDecimal *out, const char *text,
@@ -43,6 +51,21 @@ MilenaStatus milena_decimal_sub(MilenaDecimal *out, const MilenaDecimal *left,
 MilenaStatus milena_decimal_compare(const MilenaDecimal *left,
                                     const MilenaDecimal *right, int *result,
                                     MilenaError *error);
+MilenaStatus milena_decimal_round(MilenaDecimal *out,
+                                  const MilenaDecimal *value,
+                                  int32_t target_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaError *error);
+MilenaStatus milena_decimal_mul(MilenaDecimal *out,
+                                const MilenaDecimal *left,
+                                const MilenaDecimal *right,
+                                MilenaError *error);
+MilenaStatus milena_decimal_div(MilenaDecimal *out,
+                                const MilenaDecimal *left,
+                                const MilenaDecimal *right,
+                                int32_t target_scale,
+                                MilenaRoundingMode mode,
+                                MilenaError *error);
 
 MilenaStatus milena_money_init(MilenaMoney *out, MilenaDecimal amount,
                                const char *currency, MilenaError *error);

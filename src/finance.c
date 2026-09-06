@@ -248,3 +248,170 @@ MilenaStatus milena_rate_init(MilenaRate *out, MilenaDecimal value,
     out->periods_per_year = periods_per_year;
     return MILENA_OK;
 }
+
+static uint64_t decimal_abs_u64(int64_t value) {
+    return value < 0 ? (uint64_t)(-(value + 1)) + 1u : (uint64_t)value;
+}
+
+static bool unsigned_mul_checked(uint64_t left, uint64_t right, uint64_t *out) {
+    if (right != 0 && left > UINT64_MAX / right) return false;
+    *out = left * right;
+    return true;
+}
+
+static bool unsigned_pow10(int32_t power, uint64_t *out) {
+    uint64_t result = 1;
+    for (int32_t i = 0; i < power; i++) {
+        if (!unsigned_mul_checked(result, 10u, &result)) return false;
+    }
+    *out = result;
+    return true;
+}
+
+static bool signed_from_magnitude(uint64_t magnitude, bool negative,
+                                  int64_t *out) {
+    uint64_t limit = negative ? (uint64_t)INT64_MAX + 1u : (uint64_t)INT64_MAX;
+    if (magnitude > limit) return false;
+    if (!negative) {
+        *out = (int64_t)magnitude;
+    } else if (magnitude == (uint64_t)INT64_MAX + 1u) {
+        *out = INT64_MIN;
+    } else {
+        *out = -(int64_t)magnitude;
+    }
+    return true;
+}
+
+static bool should_round(uint64_t quotient, uint64_t remainder,
+                         uint64_t divisor, bool negative,
+                         MilenaRoundingMode mode) {
+    if (remainder == 0 || mode == MILENA_ROUND_TOWARD_ZERO) return false;
+    if (mode == MILENA_ROUND_FLOOR) return negative;
+    if (mode == MILENA_ROUND_CEILING) return !negative;
+    uint64_t half = divisor / 2u;
+    bool above_half = remainder > half;
+    bool exact_half = (divisor % 2u == 0u && remainder == half);
+    if (mode == MILENA_ROUND_HALF_UP) return above_half || exact_half;
+    return above_half || (exact_half && (quotient % 2u != 0u));
+}
+
+MilenaStatus milena_decimal_round(MilenaDecimal *out,
+                                  const MilenaDecimal *value,
+                                  int32_t target_scale,
+                                  MilenaRoundingMode mode,
+                                  MilenaError *error) {
+    if (!out || !decimal_valid(value) || target_scale < 0 ||
+        target_scale > MILENA_DECIMAL_MAX_SCALE || mode < MILENA_ROUND_TOWARD_ZERO ||
+        mode > MILENA_ROUND_CEILING) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de redondeo inválidos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (target_scale >= value->scale) {
+        int64_t coefficient = 0;
+        if (!multiply_power10(value->coefficient, target_scale - value->scale,
+                              &coefficient)) {
+            finance_error(error, MILENA_ERR_OVERFLOW, "Desbordamiento al ampliar escala");
+            return MILENA_ERR_OVERFLOW;
+        }
+        MilenaDecimal result = {coefficient, target_scale};
+        decimal_normalize(&result, error);
+        *out = result;
+        return MILENA_OK;
+    }
+
+    uint64_t divisor = 0;
+    if (!unsigned_pow10(value->scale - target_scale, &divisor)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Escala de redondeo fuera de rango");
+        return MILENA_ERR_OVERFLOW;
+    }
+    uint64_t magnitude = decimal_abs_u64(value->coefficient);
+    uint64_t quotient = magnitude / divisor;
+    uint64_t remainder = magnitude % divisor;
+    bool negative = value->coefficient < 0;
+    if (should_round(quotient, remainder, divisor, negative, mode)) {
+        if (quotient == UINT64_MAX) {
+            finance_error(error, MILENA_ERR_OVERFLOW, "Desbordamiento al redondear");
+            return MILENA_ERR_OVERFLOW;
+        }
+        quotient++;
+    }
+    int64_t coefficient = 0;
+    if (!signed_from_magnitude(quotient, negative, &coefficient)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Resultado redondeado fuera del rango int64");
+        return MILENA_ERR_OVERFLOW;
+    }
+    out->coefficient = coefficient;
+    out->scale = target_scale;
+    decimal_normalize(out, error);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_decimal_mul(MilenaDecimal *out,
+                                const MilenaDecimal *left,
+                                const MilenaDecimal *right,
+                                MilenaError *error) {
+    if (!out || !decimal_valid(left) || !decimal_valid(right)) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de multiplicación inválidos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (left->scale > MILENA_DECIMAL_MAX_SCALE - right->scale) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "La escala del producto supera 18 posiciones");
+        return MILENA_ERR_OVERFLOW;
+    }
+    uint64_t magnitude = 0;
+    if (!unsigned_mul_checked(decimal_abs_u64(left->coefficient),
+                              decimal_abs_u64(right->coefficient), &magnitude)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Desbordamiento al multiplicar decimales");
+        return MILENA_ERR_OVERFLOW;
+    }
+    int64_t coefficient = 0;
+    if (!signed_from_magnitude(magnitude,
+                               (left->coefficient < 0) != (right->coefficient < 0),
+                               &coefficient)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Producto fuera del rango int64");
+        return MILENA_ERR_OVERFLOW;
+    }
+    out->coefficient = coefficient;
+    out->scale = left->scale + right->scale;
+    decimal_normalize(out, error);
+    return MILENA_OK;
+}
+
+MilenaStatus milena_decimal_div(MilenaDecimal *out,
+                                const MilenaDecimal *left,
+                                const MilenaDecimal *right,
+                                int32_t target_scale,
+                                MilenaRoundingMode mode,
+                                MilenaError *error) {
+    if (!out || !decimal_valid(left) || !decimal_valid(right) ||
+        right->coefficient == 0 || target_scale < 0 ||
+        target_scale > MILENA_DECIMAL_MAX_SCALE) {
+        finance_error(error, MILENA_ERR_ARGUMENT, "Parámetros de división inválidos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    int32_t numerator_power = target_scale + right->scale;
+    uint64_t numerator = decimal_abs_u64(left->coefficient);
+    uint64_t denominator = decimal_abs_u64(right->coefficient);
+    uint64_t power = 0;
+    if (!unsigned_pow10(numerator_power, &power) ||
+        !unsigned_mul_checked(numerator, power, &numerator)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Numerador fuera del rango interno");
+        return MILENA_ERR_OVERFLOW;
+    }
+    if (!unsigned_pow10(left->scale, &power) ||
+        !unsigned_mul_checked(denominator, power, &denominator)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Denominador fuera del rango interno");
+        return MILENA_ERR_OVERFLOW;
+    }
+    uint64_t quotient = numerator / denominator;
+    uint64_t remainder = numerator % denominator;
+    bool negative = (left->coefficient < 0) != (right->coefficient < 0);
+    if (should_round(quotient, remainder, denominator, negative, mode)) quotient++;
+    if (!signed_from_magnitude(quotient, negative, &out->coefficient)) {
+        finance_error(error, MILENA_ERR_OVERFLOW, "Cociente fuera del rango int64");
+        return MILENA_ERR_OVERFLOW;
+    }
+    out->scale = target_scale;
+    decimal_normalize(out, error);
+    return MILENA_OK;
+}

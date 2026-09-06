@@ -30,6 +30,23 @@ int main(void) {
     expect_ok(milena_decimal_compare(&a, &b, &comparison, &error), &error);
     assert(comparison > 0);
 
+    MilenaDecimal factor;
+    MilenaDecimal product;
+    expect_ok(milena_decimal_from_string(&factor, "2.5", &error), &error);
+    expect_ok(milena_decimal_mul(&product, &b, &factor, &error), &error);
+    assert(product.coefficient == 3125 && product.scale == 4);
+
+    MilenaDecimal third;
+    expect_ok(milena_decimal_from_i64(&a, 1, &error), &error);
+    expect_ok(milena_decimal_from_i64(&b, 3, &error), &error);
+    expect_ok(milena_decimal_div(&third, &a, &b, 2, MILENA_ROUND_HALF_UP, &error), &error);
+    assert(third.coefficient == 33 && third.scale == 2);
+
+    MilenaDecimal rounded;
+    expect_ok(milena_decimal_from_string(&a, "12.345", &error), &error);
+    expect_ok(milena_decimal_round(&rounded, &a, 2, MILENA_ROUND_HALF_UP, &error), &error);
+    assert(rounded.coefficient == 1235 && rounded.scale == 2);
+
     MilenaMoney usd_a;
     MilenaMoney usd_b;
     MilenaMoney usd_total;
