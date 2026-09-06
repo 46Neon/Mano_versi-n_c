@@ -33,7 +33,11 @@ for package in "$INPUT_DIR"/mano_*.deb; do
     destination="$OUTPUT_DIR/dists/stable/main/binary-$arch"
     mkdir -p "$destination"
     cp "$package" "$OUTPUT_DIR/pool/main/m/mano/"
-    dpkg-scanpackages -a "$arch" "$OUTPUT_DIR/pool" /dev/null > "$destination/Packages"
+    # Generar rutas relativas al repositorio; no incluir dist/apt en Filename.
+    (
+        cd "$OUTPUT_DIR"
+        dpkg-scanpackages -a "$arch" pool /dev/null > "dists/stable/main/binary-$arch/Packages"
+    )
     gzip -9c "$destination/Packages" > "$destination/Packages.gz"
 done
 
