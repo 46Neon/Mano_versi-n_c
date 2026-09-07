@@ -26,6 +26,9 @@ sum(valores);
 array enteros = [1, 2, 3];
 array otros = [4, 5, 6];
 enteros + otros;
+enteros - otros;
+enteros * otros;
+enteros / otros;
 enteros + 2;
 enteros - 2;
 enteros * 2;
@@ -40,6 +43,9 @@ grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros - otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros \* otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros / otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros - 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros \* 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
@@ -73,6 +79,28 @@ if ./milena run "$tmp_dir/invalid-operation.milena" > "$tmp_dir/invalid-operatio
     exit 1
 fi
 grep -q 'Argumento inválido' "$tmp_dir/invalid-operation.out"
+
+cat > "$tmp_dir/array-overflow.milena" <<'MILENA'
+array maximo = [9000000000000000000];
+array uno = [9000000000000000000];
+maximo + uno;
+MILENA
+if ./milena run "$tmp_dir/array-overflow.milena" > "$tmp_dir/array-overflow.out" 2>&1; then
+    echo 'Se aceptó overflow int64' >&2
+    exit 1
+fi
+grep -q 'fuera de rango' "$tmp_dir/array-overflow.out"
+
+cat > "$tmp_dir/array-div-zero.milena" <<'MILENA'
+array valores = [1];
+array ceros = [0];
+valores / ceros;
+MILENA
+if ./milena run "$tmp_dir/array-div-zero.milena" > "$tmp_dir/array-div-zero.out" 2>&1; then
+    echo 'Se aceptó división por cero' >&2
+    exit 1
+fi
+grep -q 'División por cero' "$tmp_dir/array-div-zero.out"
 
 cat > "$tmp_dir/clientes.csv" <<'CSV'
 edad,ciudad,canal,visitas,compro
