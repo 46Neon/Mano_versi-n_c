@@ -66,6 +66,8 @@ typedef struct ASTNode {
 ASTNode* ast_create(ASTNodeType type);
 ASTNode* ast_create_leaf(ASTNodeType type, const char *value);
 ASTNode* ast_create_number(double value);
+ASTNode* ast_create_statistic(ASTStatOperation operation, ASTNode *argument,
+                              int axis, bool keepdims, double percentile);
 void ast_add_child(ASTNode *parent, ASTNode *child);
 void ast_print(ASTNode *node, int depth);
 void ast_destroy(ASTNode *node);
