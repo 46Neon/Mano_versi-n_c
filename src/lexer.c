@@ -44,7 +44,7 @@ static bool is_keyword(const char *str) {
         "maximo", "varianza", "desviacion_estandar", "mediana", "percentil",
         "eje", "conservar", "variable"
     };
-    static const int num_keywords = 34;
+    static const int num_keywords = (int)(sizeof(keywords) / sizeof(keywords[0]));
     
     for (int i = 0; i < num_keywords; i++) {
         if (strcmp(str, keywords[i]) == 0) return true;
