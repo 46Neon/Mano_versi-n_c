@@ -111,6 +111,7 @@ static MilenaStatus append_field(char ***fields, size_t *count, size_t *capacity
     if (*count == *capacity) {
         size_t next = *capacity ? *capacity * 2 : 8;
         if (next < *capacity) return MILENA_ERR_OVERFLOW;
+        if (next > SIZE_MAX / sizeof(*tmp)) return MILENA_ERR_OVERFLOW;
         char **tmp = (char **)realloc(*fields, next * sizeof(*tmp));
         if (!tmp) return MILENA_ERR_MEMORY;
         *fields = tmp;
@@ -226,6 +227,10 @@ static MilenaStatus add_row(Dataset *dataset, char **row, MilenaError *error) {
     if (dataset->row_count == dataset->row_capacity) {
         size_t next = dataset->row_capacity ? dataset->row_capacity * 2 : 64;
         if (next < dataset->row_capacity) return MILENA_ERR_OVERFLOW;
+        if (next > SIZE_MAX / sizeof(*tmp)) {
+            milena_error_set(error, MILENA_ERR_OVERFLOW, line, 1, 0, "Demasiadas filas en el dataset");
+            return MILENA_ERR_OVERFLOW;
+        }
         char ***tmp = (char ***)realloc(dataset->rows, next * sizeof(*tmp));
         if (!tmp) {
             milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, dataset->row_count,
