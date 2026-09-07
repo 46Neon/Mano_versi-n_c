@@ -834,6 +834,7 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
             memcpy(right, right_start, right_length);
             right[right_length] = '\0';
             char *right_trim = right;
+            printf("DEBUG operación: [%s] [%c] [%s]\n", left, operation, right_trim);
             ScriptArrayBinding *left_binding = find_script_array(bindings, binding_count, left);
             if (left_binding) {
                 ScriptArrayBinding *right_binding = find_script_array(bindings, binding_count, right_trim);
