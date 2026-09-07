@@ -56,7 +56,7 @@ tests/test_language_array: tests/test_language_array.c src/lexer.c src/ast.c src
 test-parser-array: tests/test_parser_array
 	./tests/test_parser_array
 
-tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
+tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c src/symbol_table.c
 	$(CC) $(CFLAGS) tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c $(LDFLAGS) -o $@
 
 .PHONY: test-parser-variables
@@ -70,7 +70,7 @@ test-functions: tests/test_functions
 tests/test_functions: tests/test_functions.c src/parser.c src/lexer.c src/ast.c src/interpreter.c src/symbol.c src/symbol_table.c src/dataset.c src/common.c
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
-tests/test_parser_variables: tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
+tests/test_parser_variables: tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c src/symbol_table.c
 	$(CC) $(CFLAGS) tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c $(LDFLAGS) -o $@
 
 SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
