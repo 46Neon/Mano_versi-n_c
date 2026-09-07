@@ -90,6 +90,18 @@ MilenaStatus milena_array_reshape_copy(MilenaArray *out,
                                        MilenaError *error);
 MilenaStatus milena_array_add(MilenaArray *out, const MilenaArray *left,
                               const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_subtract(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_multiply(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_divide(MilenaArray *out, const MilenaArray *left,
+                                 const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_subtract(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_multiply(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error);
+MilenaStatus milena_array_divide(MilenaArray *out, const MilenaArray *left,
+                                 const MilenaArray *right, MilenaError *error);
 MilenaStatus milena_array_sum(MilenaArray *out, const MilenaArray *source,
                               int axis, bool keepdims, MilenaError *error);
 
