@@ -120,10 +120,17 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     if ((parser_match(parser, TOKEN_MAS) || parser_match(parser, TOKEN_MENOS)) && value) {
         TokenType operator_type = parser->current.type;
         parser_advance(parser);
-        if (!parser_expect(parser, TOKEN_NUMERO, "Se esperaba un número después del operador")) { ast_destroy(value); return NULL; }
+        ASTNode *right = NULL;
+        if (parser_match(parser, TOKEN_NUMERO)) {
+            parser_advance(parser);
+            right = ast_create_number(parser->previous.number_value);
+        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+            if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) { ast_destroy(value); parser_error(parser, "La variable usada no ha sido declarada"); return NULL; }
+            right = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
+            parser_advance(parser);
+        } else { ast_destroy(value); parser_error(parser, "Se esperaba un valor después del operador"); return NULL; }
         ASTNode *operation = ast_create_leaf(AST_EXPRESION_OPERACION,
                                              operator_type == TOKEN_MAS ? "+" : "-");
-        ASTNode *right = ast_create_number(parser->previous.number_value);
         if (!operation || !right) { ast_destroy(value); ast_destroy(operation); ast_destroy(right); parser_error(parser, "No se pudo crear la expresión"); return NULL; }
         ast_add_child(operation, value); ast_add_child(operation, right); value = operation;
     }
