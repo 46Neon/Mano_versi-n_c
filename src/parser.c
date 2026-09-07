@@ -99,6 +99,21 @@ static ASTNode *parse_array_declaration(Parser *parser) {
     return declaration;
 }
 
+static ASTNode *parse_variable_declaration(Parser *parser) {
+    parser_advance(parser);
+    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
+    char name[MAX_TOKEN_LEN];
+    strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable") ||
+        !parser_expect(parser, TOKEN_NUMERO, "La variable necesita una expresión numérica")) return NULL;
+    ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
+    ASTNode *value = ast_create_number(parser->previous.number_value);
+    if (!node || !value) { ast_destroy(node); ast_destroy(value); parser_error(parser, "No se pudo crear la variable"); return NULL; }
+    ast_add_child(node, value);
+    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la variable")) { ast_destroy(node); return NULL; }
+    return node;
+}
+
 static ASTNode* parse_bloque_analisis(Parser *parser) {
     if (!parser_expect(parser, TOKEN_PUNTO, "Se esperaba '.'")) return NULL;
     if (!parser_expect(parser, TOKEN_KW_ANALISIS, "Se esperaba 'analisis'")) return NULL;
@@ -114,7 +129,10 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
     
     // Parsear contenido del bloque
     while (!parser_match(parser, TOKEN_LLAVE_DER) && !parser_match(parser, TOKEN_EOF)) {
-        if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+        if (parser_match(parser, TOKEN_KW_VARIABLE)) {
+            ASTNode *declaration = parse_variable_declaration(parser);
+            if (declaration) ast_add_child(node, declaration);
+        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
             (strcmp(parser->current.lexeme, "array") == 0 ||
              strcmp(parser->current.lexeme, "arreglo") == 0)) {
             ASTNode *declaration = parse_array_declaration(parser);
