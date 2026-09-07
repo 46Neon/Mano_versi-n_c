@@ -23,6 +23,13 @@ shape(valores);
 ndim(valores);
 size(valores);
 sum(valores);
+array enteros = [1, 2, 3];
+array otros = [4, 5, 6];
+enteros + otros;
+enteros + 2;
+enteros - 2;
+enteros * 2;
+enteros / 2;
 MILENA
 ./milena run "$tmp_dir/arrays.milena" > "$tmp_dir/arrays.out"
 grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
@@ -31,6 +38,11 @@ grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
 grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros + 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros - 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros \* 2: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros / 2: dtype=float64, shape=(3)' "$tmp_dir/arrays.out"
 
 cat > "$tmp_dir/array-errors.milena" <<'MILENA'
 array vacio = [];
