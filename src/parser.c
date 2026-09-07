@@ -150,9 +150,14 @@ static ASTNode *parse_assignment(Parser *parser) {
     strncpy(name, parser->current.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
     if (!milena_symbols_exists(&parser->symbols, name)) { parser_error(parser, "La variable asignada no ha sido declarada"); return NULL; }
     parser_advance(parser);
-    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la asignación") || !parser_expect(parser, TOKEN_NUMERO, "Se esperaba valor numérico")) return NULL;
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la asignación")) return NULL;
+    ASTNode *value = NULL;
+    if (parser_match(parser, TOKEN_NUMERO)) { parser_advance(parser); value = ast_create_number(parser->previous.number_value); }
+    else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) { parser_error(parser, "La variable usada no ha sido declarada"); return NULL; }
+        value = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme); parser_advance(parser);
+    } else { parser_error(parser, "Se esperaba valor en la asignación"); return NULL; }
     ASTNode *node = ast_create_leaf(AST_ASIGNACION_VARIABLE, name);
-    ASTNode *value = ast_create_number(parser->previous.number_value);
     if (!node || !value) { ast_destroy(node); ast_destroy(value); return NULL; }
     ast_add_child(node, value);
     if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la asignación")) { ast_destroy(node); return NULL; }
