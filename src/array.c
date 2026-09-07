@@ -46,8 +46,8 @@ size_t milena_dtype_size(MilenaDType dtype) {
         case MILENA_DTYPE_UINT64: return sizeof(uint64_t);
         case MILENA_DTYPE_FLOAT32: return sizeof(float);
         case MILENA_DTYPE_FLOAT64: return sizeof(double);
-        case MILENA_DTYPE_COMPLEX64: return sizeof(float complex);
-        case MILENA_DTYPE_COMPLEX128: return sizeof(double complex);
+        case MILENA_DTYPE_COMPLEX64: return sizeof(float _Complex);
+        case MILENA_DTYPE_COMPLEX128: return sizeof(double _Complex);
         default: return 0;
     }
 }
