@@ -170,9 +170,13 @@ static ASTNode *parse_expression(Parser *parser) {
 
 static ASTNode *parse_variable_declaration(Parser *parser) {
     parser_advance(parser);
-    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
+    if (!parser_is_identifier(parser)) {
+        parser_error(parser, "Se esperaba nombre de variable");
+        return NULL;
+    }
     char name[MAX_TOKEN_LEN];
-    strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
+    strncpy(name, parser->current.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
+    parser_advance(parser);
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
     ASTNode *value = parse_expression(parser);
     if (!value) return NULL;
