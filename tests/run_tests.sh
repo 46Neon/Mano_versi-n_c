@@ -25,6 +25,9 @@ size(valores);
 sum(valores);
 array enteros = [1, 2, 3];
 array otros = [4, 5, 6];
+array uno = [10];
+array matriz = zeros(2, 3);
+enteros + uno;
 enteros + otros;
 enteros - otros;
 enteros * otros;
@@ -38,10 +41,13 @@ MILENA
 cat "$tmp_dir/arrays.out"
 grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
 grep -q 'Array ceros: dtype=float64, shape=(4), size=4' "$tmp_dir/arrays.out"
+grep -q 'Array uno: dtype=int64, shape=(1), size=1' "$tmp_dir/arrays.out"
+grep -q 'Array matriz: dtype=float64, shape=(2, 3), size=6' "$tmp_dir/arrays.out"
 grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
 grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
+grep -q 'Operacion enteros + uno: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros - otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros \* otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
