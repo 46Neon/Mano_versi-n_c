@@ -145,6 +145,20 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     return node;
 }
 
+static ASTNode *parse_assignment(Parser *parser) {
+    char name[MAX_TOKEN_LEN];
+    strncpy(name, parser->current.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
+    if (!milena_symbols_exists(&parser->symbols, name)) { parser_error(parser, "La variable asignada no ha sido declarada"); return NULL; }
+    parser_advance(parser);
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la asignación") || !parser_expect(parser, TOKEN_NUMERO, "Se esperaba valor numérico")) return NULL;
+    ASTNode *node = ast_create_leaf(AST_ASIGNACION_VARIABLE, name);
+    ASTNode *value = ast_create_number(parser->previous.number_value);
+    if (!node || !value) { ast_destroy(node); ast_destroy(value); return NULL; }
+    ast_add_child(node, value);
+    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la asignación")) { ast_destroy(node); return NULL; }
+    return node;
+}
+
 static ASTNode* parse_bloque_analisis(Parser *parser) {
     if (!parser_expect(parser, TOKEN_PUNTO, "Se esperaba '.'")) return NULL;
     if (!parser_expect(parser, TOKEN_KW_ANALISIS, "Se esperaba 'analisis'")) return NULL;
@@ -163,6 +177,11 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
         if (parser_match(parser, TOKEN_KW_VARIABLE)) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
+        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+                   strcmp(parser->current.lexeme, "array") != 0 &&
+                   strcmp(parser->current.lexeme, "arreglo") != 0) {
+            ASTNode *assignment = parse_assignment(parser);
+            if (assignment) ast_add_child(node, assignment);
         } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
             (strcmp(parser->current.lexeme, "array") == 0 ||
              strcmp(parser->current.lexeme, "arreglo") == 0)) {
