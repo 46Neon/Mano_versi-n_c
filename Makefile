@@ -110,4 +110,4 @@ test-script-functions: tests/test_script_functions
 	./tests/test_script_functions
 
 tests/test_script_functions: tests/test_script_functions.c $(SOURCES)
-	$(CC) $(CFLAGS) -Iinclude tests/test_script_functions.c $(SOURCES) $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) -Iinclude tests/test_script_functions.c $(filter-out src/main.c,$(SOURCES)) $(LDFLAGS) -o $@
