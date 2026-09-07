@@ -255,3 +255,37 @@ ASTNode* parser_parse(Parser *parser) {
     
     return program;
 }
+
+ASTNode* parser_parse_statistical_call(Parser *parser) {
+    if (!parser) return NULL;
+    bool median = parser->current.type == TOKEN_FUNCION_MEDIANA;
+    bool percentile = parser->current.type == TOKEN_FUNCION_PERCENTIL;
+    if (!median && !percentile) { parser_error(parser, "Se esperaba una operación estadística"); return NULL; }
+    parser_advance(parser);
+    if (!parser_expect(parser, TOKEN_PAR_IZQ, "Se esperaba '(' después de la operación")) return NULL;
+    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba un arreglo como argumento")) return NULL;
+    ASTNode *argument = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->previous.lexeme);
+    if (!argument) { parser_error(parser, "No se pudo crear el argumento estadístico"); return NULL; }
+    double percentile_value = 50.0; int axis = -1; bool keepdims = false;
+    if (percentile) {
+        if (!parser_expect(parser, TOKEN_COMA, "Se esperaba el porcentaje" ) ||
+            !parser_expect(parser, TOKEN_NUMERO, "Se esperaba un porcentaje numérico")) { ast_destroy(argument); return NULL; }
+        percentile_value = parser->previous.number_value;
+        if (percentile_value < 0.0 || percentile_value > 100.0) { ast_destroy(argument); parser_error(parser, "El porcentaje debe estar entre 0 y 100"); return NULL; }
+    }
+    while (!parser_match(parser, TOKEN_PAR_DER)) {
+        if (!parser_expect(parser, TOKEN_COMA, "Se esperaba ',' entre argumentos")) { ast_destroy(argument); return NULL; }
+        if (parser_match(parser, TOKEN_CONCEPTO_EJE)) {
+            parser_advance(parser);
+            if (!parser_expect(parser, TOKEN_NUMERO, "Se esperaba un número después de 'eje'")) { ast_destroy(argument); return NULL; }
+            axis = (int)parser->previous.number_value;
+        } else if (parser_match(parser, TOKEN_CONCEPTO_CONSERVAR)) {
+            parser_advance(parser);
+            if (!parser_expect(parser, TOKEN_FUNCION_DIMENSIONES, "Se esperaba 'dimensiones' después de 'conservar'")) { ast_destroy(argument); return NULL; }
+            keepdims = true;
+        } else { ast_destroy(argument); parser_error(parser, "Argumento estadístico inesperado"); return NULL; }
+    }
+    parser_advance(parser);
+    ASTStatOperation op = median ? AST_ESTADISTICA_MEDIANA : AST_ESTADISTICA_PERCENTIL;
+    return ast_create_statistic(op, argument, axis, keepdims, percentile_value);
+}
