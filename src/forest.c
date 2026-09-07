@@ -16,7 +16,11 @@ static size_t build(MilenaForestClassifier *f,const MilenaArray *x,const MilenaA
     if(depth>=f->max_depth||pure||n<2)return node;
     size_t feature=(depth+tree)%f->feature_count; double lo=fv(x,rows[0]*x->shape[1]+feature),hi=lo;
     for(size_t i=1;i<n;i++){double z=fv(x,rows[i]*x->shape[1]+feature);if(z<lo)lo=z;if(z>hi)hi=z;}
-    if(lo==hi)return node; double cut=(lo+hi)/2.0;size_t nl=0,nr=0;for(size_t i=0;i<n;i++)(fv(x,rows[i]*x->shape[1]+feature)<=cut?nl:nr)++;
+    if(lo==hi)return node; double cut=(lo+hi)/2.0;size_t nl=0,nr=0;
+    for(size_t i=0;i<n;i++) {
+        if (fv(x,rows[i]*x->shape[1]+feature)<=cut) nl++;
+        else nr++;
+    }
     if(!nl||!nr)return node;size_t *left=malloc(nl*sizeof(*left)),*right=malloc(nr*sizeof(*right));if(!left||!right){free(left);free(right);return node;}
     size_t il=0,ir=0;for(size_t i=0;i<n;i++){if(fv(x,rows[i]*x->shape[1]+feature)<=cut)left[il++]=rows[i];else right[ir++]=rows[i];}
     size_t a=build(f,x,y,left,nl,depth+1,tree,e),b=build(f,x,y,right,nr,depth+1,tree,e);free(left);free(right);
