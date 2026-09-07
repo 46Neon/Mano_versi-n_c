@@ -106,8 +106,18 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable") ||
         !parser_expect(parser, TOKEN_NUMERO, "La variable necesita una expresión numérica")) return NULL;
-    ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
     ASTNode *value = ast_create_number(parser->previous.number_value);
+    if ((parser_match(parser, TOKEN_MAS) || parser_match(parser, TOKEN_MENOS)) && value) {
+        TokenType operator_type = parser->current.type;
+        parser_advance(parser);
+        if (!parser_expect(parser, TOKEN_NUMERO, "Se esperaba un número después del operador")) { ast_destroy(value); return NULL; }
+        ASTNode *operation = ast_create_leaf(AST_EXPRESION_OPERACION,
+                                             operator_type == TOKEN_MAS ? "+" : "-");
+        ASTNode *right = ast_create_number(parser->previous.number_value);
+        if (!operation || !right) { ast_destroy(value); ast_destroy(operation); ast_destroy(right); parser_error(parser, "No se pudo crear la expresión"); return NULL; }
+        ast_add_child(operation, value); ast_add_child(operation, right); value = operation;
+    }
+    ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
     if (!node || !value) { ast_destroy(node); ast_destroy(value); parser_error(parser, "No se pudo crear la variable"); return NULL; }
     ast_add_child(node, value);
     if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la variable")) { ast_destroy(node); return NULL; }
