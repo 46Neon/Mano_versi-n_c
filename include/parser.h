@@ -15,6 +15,7 @@ typedef struct Parser {
 
 void parser_init(Parser *parser, Lexer *lexer);
 ASTNode* parser_parse(Parser *parser);
+ASTNode* parser_parse_statistical_call(Parser *parser);
 void parser_error(Parser *parser, const char *msg);
 bool parser_match(Parser *parser, TokenType type);
 bool parser_expect(Parser *parser, TokenType type, const char *msg);
