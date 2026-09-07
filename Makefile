@@ -5,7 +5,7 @@ SOURCES = src/common.c src/array.c src/table.c src/finance.c src/schema.c src/da
           src/sst_dates.c src/sst_model.c src/sst_stats.c src/sst_histogram.c \
           src/sst_rates.c src/sst_report.c src/sst_report_advanced.c \
           src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
-          src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c
+          src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c src/function_parser.c src/user_functions.c
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = milena
 
