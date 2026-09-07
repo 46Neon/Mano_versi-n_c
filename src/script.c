@@ -1047,7 +1047,7 @@ static MilenaStatus run_numeric_functions(const char *script, MilenaError *error
     }
     free(decls);
     /* A script invokes a function with: llamar nombre(1, 2); (also llama). */
-    const char *call = strstr(p, "llamar"); if (!call) call = strstr(script, "llamar");
+    const char *call = strstr(script, "llamar");
     if (!call) call = strstr(script, "llama");
     if (call) {
         call += (strncmp(call, "llamar", 6) == 0 ? 6 : 5); while (isspace((unsigned char)*call)) call++;
