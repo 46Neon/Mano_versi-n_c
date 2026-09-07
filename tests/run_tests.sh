@@ -23,6 +23,11 @@ shape(valores);
 ndim(valores);
 size(valores);
 sum(valores);
+mean(valores);
+min(valores);
+max(valores);
+variance(valores);
+std(valores);
 array enteros = [1, 2, 3];
 array otros = [4, 5, 6];
 array uno = [10];
@@ -58,6 +63,11 @@ grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
 grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
+grep -q 'mean(valores) = 2.1666666' "$tmp_dir/arrays.out"
+grep -q 'min(valores) = 1' "$tmp_dir/arrays.out"
+grep -q 'max(valores) = 3' "$tmp_dir/arrays.out"
+grep -q 'variance(valores) = 0.72222222222222' "$tmp_dir/arrays.out"
+grep -q 'std(valores) = 0.8498365855988' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + uno: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros - otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
