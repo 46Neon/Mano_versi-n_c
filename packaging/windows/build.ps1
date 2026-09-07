@@ -17,7 +17,7 @@ $Sources = $SourceNames | ForEach-Object { Join-Path $Root "src/$_" }
 
 $Compiler = if ($env:CC) { $env:CC } else { 'clang' }
 & $Compiler -std=c17 -Wall -Wextra -Wpedantic -O2 `
-    '-Iinclude' $Sources '-o' $Output
+    '-Iinclude' $Sources '-lm' '-o' $Output
 if ($LASTEXITCODE -ne 0) { throw "No se pudo compilar Milena para Windows" }
 
 Write-Host "Ejecutable creado: $Output"
