@@ -8,6 +8,7 @@
 #include "sst_model.h"
 #include "sst_normality.h"
 #include "sst_rates.h"
+#include "array.h"
 #include <ctype.h>
 
 static char *read_file(const char *filename, MilenaError *error) {
@@ -531,10 +532,145 @@ static MilenaStatus run_sst_commands(const char *script, const Dataset *dataset,
     return MILENA_OK;
 }
 
+
+static MilenaStatus run_array_declarations(const char *script, MilenaError *error) {
+    const char *cursor = script;
+    size_t declarations = 0;
+    while ((cursor = strstr(cursor, "array")) != NULL) {
+        const char *name_start = cursor + 5;
+        if (*name_start && !isspace((unsigned char)*name_start)) {
+            cursor = name_start;
+            continue;
+        }
+        while (isspace((unsigned char)*name_start)) name_start++;
+        const char *name_end = name_start;
+        while (isalnum((unsigned char)*name_end) || *name_end == '_') name_end++;
+        if (name_end == name_start) {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Se esperaba nombre después de array");
+            return MILENA_ERR_PARSE;
+        }
+        char name[128];
+        size_t name_length = (size_t)(name_end - name_start);
+        if (name_length >= sizeof(name)) {
+            milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
+                             "Nombre de array demasiado largo");
+            return MILENA_ERR_OVERFLOW;
+        }
+        memcpy(name, name_start, name_length);
+        name[name_length] = '\0';
+        const char *equal = name_end;
+        while (isspace((unsigned char)*equal)) equal++;
+        if (*equal != '=') {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Se esperaba '=' en la declaración del array");
+            return MILENA_ERR_PARSE;
+        }
+        const char *expression = equal + 1;
+        while (isspace((unsigned char)*expression)) expression++;
+        bool zeros = strncmp(expression, "zeros", 5) == 0;
+        const char *start = NULL;
+        const char *end = NULL;
+        if (zeros) {
+            start = strchr(expression, '(');
+            end = start ? strchr(start + 1, ')') : NULL;
+        } else {
+            start = strchr(expression, '[');
+            end = start ? strchr(start + 1, ']') : NULL;
+        }
+        if (!start || !end || end <= start + 1) {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Literal de array vacío o sin cierre");
+            return MILENA_ERR_PARSE;
+        }
+        size_t count = 0;
+        if (zeros) {
+            char *number_end = NULL;
+            unsigned long parsed = strtoul(start + 1, &number_end, 10);
+            if (number_end != end || parsed == 0 || parsed > SIZE_MAX) {
+                milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                 "zeros requiere una longitud positiva");
+                return MILENA_ERR_PARSE;
+            }
+            count = (size_t)parsed;
+        } else {
+            const char *scan = start + 1;
+            while (scan < end) {
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                char *number_end = NULL;
+                (void)strtod(scan, &number_end);
+                if (number_end == scan || number_end > end) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "El array solo admite números");
+                    return MILENA_ERR_PARSE;
+                }
+                count++;
+                scan = number_end;
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                if (scan < end && *scan != ',') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Se esperaba ',' entre elementos");
+                    return MILENA_ERR_PARSE;
+                }
+                if (scan < end) scan++;
+            }
+        }
+        size_t shape[] = {count};
+        MilenaArray array = {0};
+        MilenaStatus status;
+        if (zeros) {
+            status = milena_array_zeros(&array, MILENA_DTYPE_FLOAT64, 1,
+                                        shape, error);
+        } else {
+            double *values = (double *)malloc(count * sizeof(double));
+            int64_t *integers = (int64_t *)malloc(count * sizeof(int64_t));
+            if (!values || !integers) {
+                free(values); free(integers);
+                milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0,
+                                 "No se pudo reservar el literal del array");
+                return MILENA_ERR_MEMORY;
+            }
+            bool all_integers = true;
+            const char *scan = start + 1;
+            for (size_t i = 0; i < count; i++) {
+                char *number_end = NULL;
+                values[i] = strtod(scan, &number_end);
+                integers[i] = (int64_t)values[i];
+                if (values[i] != (double)integers[i]) all_integers = false;
+                scan = number_end;
+                while (isspace((unsigned char)*scan) || *scan == ',') scan++;
+            }
+            if (all_integers) {
+                status = milena_array_from_i64(&array, 1, shape, integers, error);
+            } else {
+                status = milena_array_from_f64(&array, 1, shape, values, error);
+            }
+            free(values); free(integers);
+        }
+        if (status != MILENA_OK) return status;
+        printf("Array %s: dtype=%s, shape=(%zu), size=%zu\n", name,
+               milena_dtype_name(array.dtype), array.shape[0], array.size);
+        milena_array_release(&array);
+        declarations++;
+        cursor = end + 1;
+    }
+    if (declarations == 0) {
+        milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                         "No se encontró una declaración de array");
+        return MILENA_ERR_PARSE;
+    }
+    return MILENA_OK;
+}
+
 MilenaStatus milena_run_script(const char *filename, MilenaError *error) {
     if (!filename) return MILENA_ERR_ARGUMENT;
     char *script = read_file(filename, error);
     if (!script) return error && error->code ? error->code : MILENA_ERR_IO;
+    if (strstr(script, "array") != NULL && strstr(script, "dataset cargar") == NULL) {
+        MilenaStatus array_status = run_array_declarations(script, error);
+        free(script);
+        return array_status;
+    }
     MilenaSchema schema; schema_init(&schema);
     MilenaStatus status = parse_schema(script, &schema, error);
     if (status == MILENA_OK) status = validate_commands(script, error);

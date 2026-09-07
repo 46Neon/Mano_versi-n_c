@@ -16,6 +16,14 @@ CSV
 test -s "$tmp_dir/test-output.json"
 grep -q '"total": 43' "$tmp_dir/test-output.json"
 
+cat > "$tmp_dir/arrays.milena" <<'MILENA'
+array valores = [1, 2.5, 3];
+array ceros = zeros(4);
+MILENA
+./milena run "$tmp_dir/arrays.milena" > "$tmp_dir/arrays.out"
+grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
+grep -q 'Array ceros: dtype=float64, shape=(4), size=4' "$tmp_dir/arrays.out"
+
 cat > "$tmp_dir/clientes.csv" <<'CSV'
 edad,ciudad,canal,visitas,compro
 20,Caracas,web,3,1
