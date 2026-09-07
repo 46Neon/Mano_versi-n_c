@@ -1,6 +1,6 @@
-# Repositorio APT de Mano
+# Repositorio APT de Milena
 
-Este canal publica los paquetes `.deb` de Mano para que los usuarios puedan instalar desde APT. Termux y Debian/Ubuntu usan índices separados por arquitectura, aunque los paquetes se sirvan desde el mismo sitio.
+Este canal publica los paquetes `.deb` de Milena para que los usuarios puedan instalar desde APT. Termux y Debian/Ubuntu usan índices separados por arquitectura, aunque los paquetes se sirvan desde el mismo sitio.
 
 ## Qué necesita el repositorio
 
@@ -10,8 +10,8 @@ dists/stable/InRelease
 dists/stable/Release.gpg
 dists/stable/main/binary-aarch64/Packages.gz
 dists/stable/main/binary-amd64/Packages.gz
-pool/main/m/mano/*.deb
-mano-archive-keyring.asc
+pool/main/m/milena/*.deb
+milena-archive-keyring.asc
 ```
 
 El paquete `aarch64` debe ser el construido para Termux. El paquete `amd64` debe ser el construido para Debian/Ubuntu. No se intercambian.
@@ -28,7 +28,7 @@ NETLIFY_SITE_ID
 NETLIFY_AUTH_TOKEN
 ```
 
-La clave privada no debe entrar al repositorio. La clave pública se publica como `mano-archive-keyring.asc` para que los usuarios puedan verificar el repositorio.
+La clave privada no debe entrar al repositorio. La clave pública se publica como `milena-archive-keyring.asc` para que los usuarios puedan verificar el repositorio.
 
 ## Flujo
 

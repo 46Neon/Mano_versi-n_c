@@ -1,292 +1,197 @@
-# Mano SST
+# 🌿 Milena
 
-Mano es un lenguaje y motor pequeño escrito en C17 para analizar datos SST existentes. Su objetivo es detectar patrones, tendencias, distribuciones y comportamientos estadísticos que puedan apoyar la prevención de accidentes laborales.
+## Análisis de datos intuitivo y nativo en español
 
-> **Alcance:** Mano es una herramienta tecnológica de apoyo. No sustituye al profesional de seguridad y salud laboral, una investigación de accidentes, un sistema oficial, una evaluación legal ni la toma de decisiones profesionales.
+Milena es un lenguaje y motor para análisis de datos, estadística y computación científica. Permite trabajar con arreglos, tablas y operaciones reproducibles mediante scripts con extensión `.milena`.
 
-## Qué puede hacer
+Milena se construye con una visión de largo plazo: convertirse en una herramienta clave para el análisis de datos, con una sintaxis clara para las personas, un motor controlable y una evolución orientada a la computación científica. Esa visión se desarrolla paso a paso, con capacidades verificadas antes de presentarlas como terminadas.
 
-- Cargar CSV con límites operativos para datasets pequeños.
-- Validar columnas, valores numéricos, categorías y variables binarias.
-- Analizar incidentes, severidad, días de incapacidad y exposición.
-- Comparar áreas, turnos, riesgos y grupos.
-- Detectar patrones, valores inválidos y señales estadísticas.
-- Generar reportes JSON reproducibles para revisión profesional.
-- Mantener advertencias explícitas sobre aproximaciones y causalidad.
+## 🚀 Empezar ahora
 
-Mano analiza datos que ya existen; no determina por sí sola la causa de un accidente ni recomienda medidas legales automáticamente.
+### Un primer script
 
-## Compilar
+```milena
+arreglo valores = [1, 2, 3, 4];
+
+forma(valores);
+tamaño(valores);
+media(valores);
+mediana(valores);
+percentil(valores, 90);
+```
+
+### Arreglos por eje
+
+```milena
+arreglo matriz = ceros(2, 3);
+
+media(matriz, eje 0);
+mediana(matriz, eje 1);
+percentil(matriz, 90, eje 0);
+```
+
+Para conservar la dimensión reducida:
+
+```milena
+media(matriz, eje 0, conservar dimensiones);
+mediana(matriz, eje 1, conservar dimensiones);
+```
+
+> [!TIP]
+> Los ejemplos nuevos deben usar las palabras españolas. Durante la transición pueden existir nombres históricos compatibles, pero la sintaxis española es la dirección oficial del lenguaje.
+
+## ¿Qué puede hacer Milena?
+
+- Crear arreglos numéricos y arreglos de ceros.
+- Consultar forma, dimensiones y tamaño.
+- Ejecutar operaciones entre arreglos y escalares.
+- Aplicar broadcasting en operaciones compatibles.
+- Calcular suma, media, mínimo, máximo, varianza y desviación estándar.
+- Calcular medianas y percentiles mediante interpolación lineal.
+- Reducir operaciones por eje y conservar dimensiones.
+- Trabajar con vistas, strides, reshape y transposición desde el motor de arreglos.
+- Analizar archivos tabulares y generar reportes reproducibles.
+- Ejecutar módulos de análisis estadístico y preventivo con advertencias explícitas.
+- Iniciar el desarrollo de árboles de decisión y bosques clasificadores.
+
+## 📦 Instalación y uso
+
+Desde el repositorio:
 
 ```bash
+git clone https://github.com/46Neon/Milena.git
+cd Milena
 ./build.sh
 ```
 
-También se puede compilar con:
+Ejecutar un script:
 
 ```bash
-make
+./milena run ejemplos/estadistica.milena
 ```
 
-La compilación utiliza C17 y advertencias estrictas. En un entorno de validación se recomienda ejecutar también GCC y Clang con ASan y UBSan.
-
-## Ejecutar
+Analizar un archivo tabular:
 
 ```bash
-./mano analizar mi_archivo.csv reporte_mano.json
-./mano perfil mi_archivo.csv perfil.json
-./mano run examples/clasificacion_binaria.mano
-./mano inspect mi_archivo.csv
+./milena analizar datos.csv reporte.json
+./milena perfil datos.csv perfil.json
 ```
 
-Un script produce el reporte general indicado en `.exportar`. Si contiene operaciones SST, también produce un archivo con el sufijo:
+La forma exacta de algunos comandos de archivos y reportes continúa evolucionando junto con el lenguaje. Los scripts deben conservar los datos de entrada, las reglas de limpieza y la versión del motor para facilitar la reproducción del análisis.
+
+## ✍️ Sintaxis esencial
+
+Las declaraciones y operaciones principales utilizan palabras españolas:
+
+```milena
+arreglo datos = [10, 20, 30, 40];
+
+suma(datos);
+media(datos);
+minimo(datos);
+maximo(datos);
+varianza(datos);
+desviacion_estandar(datos);
+mediana(datos);
+percentil(datos, 95);
+```
+
+Las reducciones por eje siguen una estructura explícita:
+
+```milena
+media(datos, eje 0);
+media(datos, eje 0, conservar dimensiones);
+media(datos, eje 0, sin conservar dimensiones);
+```
+
+La sintaxis busca ser humana en significado, pero conserva delimitadores claros para facilitar el análisis, los mensajes de error y la reproducibilidad. Las frases completamente libres todavía forman parte de una etapa futura.
+
+## 🌲 Bosques en desarrollo
+
+Milena ya cuenta con una primera base interna para clasificación mediante un conjunto de árboles simples y votación de clases. Esta capacidad todavía está en desarrollo y aún no se presenta como un sistema completo de aprendizaje automático.
+
+El trabajo previsto incluye:
+
+1. Separar árbol y bosque como componentes independientes.
+2. Añadir profundidad configurable.
+3. Incorporar más de dos clases.
+4. Añadir selección reproducible de características.
+5. Incorporar muestras de entrenamiento controladas.
+6. Validar datos imperfectos y casos límite.
+7. Exponer la capacidad mediante sintaxis española estable.
+
+## 🧭 Roadmap
+
+### Base disponible
+
+- Arreglos numéricos.
+- Formas, dimensiones y tamaño.
+- Strides, vistas, reshape y transposición.
+- Broadcasting.
+- Estadística global y por eje.
+- Medianas y percentiles.
+- Reportes y análisis tabular.
+- Validación automatizada en Linux y Windows.
+
+### En desarrollo
+
+- Bosques clasificadores.
+- Pruebas multidimensionales más amplias.
+- Sintaxis española semántica.
+- Álgebra lineal ampliada.
+- Gestión de memoria optimizada.
+
+### Etapas futuras
+
+- Integración numérica.
+- Optimización científica.
+- Diferenciación automática.
+- Mejoras específicas para cada plataforma.
+- Herramientas avanzadas de modelado.
+
+## 🔍 Estado del proyecto
+
+Milena está en desarrollo activo. Sus capacidades se incorporan por capas y se validan con pruebas automatizadas. Algunas operaciones, partes de la sintaxis y módulos avanzados todavía pueden cambiar.
+
+> [!WARNING]
+> Milena no sustituye una auditoría, una investigación profesional, una decisión médica, legal o financiera, ni una validación especializada. Los resultados deben interpretarse según los datos, el método utilizado y el contexto del análisis.
+
+La visualización, los sistemas distribuidos y los modelos avanzados todavía forman parte de etapas posteriores.
+
+## 🏗️ Organización del lenguaje
 
 ```text
-reporte_mano.json.sst.json
+script .milena
+      ↓
+lexer y parser
+      ↓
+representación semántica
+      ↓
+motor de arreglos y tablas
+      ↓
+operaciones estadísticas
+      ↓
+resultado o reporte
 ```
 
-## Sintaxis de variables
+La forma en que una persona escribe una operación está separada de la implementación interna que la ejecuta. Esto permite mejorar la sintaxis sin reescribir los cálculos fundamentales.
 
-```mano
-variable fecha fecha
-variable area categorica
-variable turno categorica
-variable severidad numerica
-variable dias_incapacidad numerica
-variable horas_exposicion numerica
-variable ocurrio_incidente binaria
+## 🤝 Contribuir
 
-entrada categorica "area"
-salida binaria "ocurrio_incidente"
-```
+Puedes probar Milena, revisar los ejemplos, reportar errores o proponer mejoras en el repositorio:
 
-Tipos soportados:
+[Repositorio de Milena](https://github.com/46Neon/Milena)
 
-- `numerica`: validación con `strtod`, promedio, mínimo y máximo.
-- `categorica`: conteo de valores y nulos.
-- `binaria`: reconoce `0/1`, `true/false`, `verdadero/falso`, `yes/no` y `si/no`.
-- `fecha` y `texto`: metadata y validación básica.
+Al reportar un problema, incluye cuando sea posible:
 
-## Operaciones de limpieza
+- sistema utilizado;
+- script `.milena` mínimo que reproduce el problema;
+- resultado esperado;
+- resultado obtenido;
+- versión o commit del proyecto.
 
-```mano
-#nulos("eliminar")
-#duplicados("eliminar")
-#total("precio * cantidad")
-#periodo extraer("mes de fecha")
-#condicion("total > 0")
-```
+Las contribuciones deben mantener la portabilidad, los errores explícitos, las pruebas automatizadas y la claridad de la sintaxis.
 
-## Operaciones estadísticas SST
+## 📄 Licencia
 
-```mano
-#perfil_numerico("severidad")
-#perfil_avanzado("severidad")
-#histograma("severidad", bins = 5)
-#normalidad("severidad")
-#balance("ocurrio_incidente")
-#tasa("ocurrio_incidente", "horas_exposicion", factor = 200000)
-#poisson("ocurrio_incidente", "horas_exposicion", factor = 200000)
-#correlacion("severidad", "dias_incapacidad")
-#chi_cuadrado("area", "ocurrio_incidente")
-```
-
-### Interpretación de las operaciones
-
-- `#perfil_numerico`: resumen descriptivo de una variable.
-- `#perfil_avanzado`: CV, asimetría, kurtosis y percentiles.
-- `#histograma`: distribución por intervalos, underflow y overflow.
-- `#normalidad`: diagnóstico Jarque-Bera aproximado; no es Shapiro-Wilk exacto.
-- `#balance`: conteo de positivos, negativos e inválidos.
-- `#tasa`: incidentes divididos entre exposición y multiplicados por un factor.
-- `#poisson`: intervalo de tasa para conteos Poisson mediante inversión numérica de la CDF en rangos soportados.
-- `#correlacion`: Pearson con pares válidos y control de variación.
-- `#chi_cuadrado`: tabla de contingencia, estadístico, grados de libertad y celdas esperadas bajas.
-
-Las tasas siempre deben interpretarse junto con su denominador, factor, periodo y definición de exposición.
-
-## Comandos no soportados
-
-Un comando desconocido no se ignora. Mano produce un error explícito para evitar informes aparentemente completos:
-
-```text
-UNSUPPORTED: Comando Mano no reconocido; no se ignorará silenciosamente
-```
-
-Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.mano` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
-
-## Reportes y advertencias
-
-Los reportes incluyen, según corresponda:
-
-- filas cargadas y filas inválidas;
-- columnas y variables declaradas;
-- perfiles numéricos;
-- categorías y frecuencias;
-- valores nulos;
-- positivos, negativos e inválidos;
-- tasa y denominador;
-- tamaño muestral;
-- datos excluidos;
-- método utilizado;
-- indicador `aproximado`;
-- advertencias de muestra pequeña;
-- advertencia de que asociación estadística no implica causalidad.
-
-Estas advertencias son controles de interpretación, no una certificación legal ni una firma profesional.
-
-## Trazabilidad prevista
-
-Para que un análisis sea reproducible, el flujo profesional debe conservar:
-
-- archivo CSV original;
-- script `.mano` utilizado;
-- configuración y factor de exposición;
-- versión del motor;
-- reporte generado;
-- filas rechazadas y reglas de limpieza;
-- revisión del profesional SST.
-
-El logger del proyecto soporta texto y JSON Lines con `job_id`, timestamp, archivo, línea, función y mensaje. El módulo de métricas soporta contadores de filas y duración. La instrumentación completa de todas las operaciones continúa en evolución.
-
-## Límites por defecto
-
-```text
-máximo de filas:          5.000
-máximo de columnas:          70
-máximo aproximado por campo: 1 MiB
-```
-
-Estos límites hacen que el almacenamiento actual en memoria sea razonable para el alcance inicial. Mano no es todavía un sistema distribuido, un motor columnar ni una plataforma Big Data.
-
-## Arquitectura SST
-
-```text
-CSV
- ↓
-calidad y validación
- ↓
-esquema y script Mano
- ↓
-operación estadística
- ↓
-módulo SST
- ↓
-advertencias y trazabilidad
- ↓
-reporte JSON
-```
-
-Módulos principales:
-
-- `sst_dates`: fechas ISO, comparación, fechas futuras y días desde epoch.
-- `sst_model`: eventos SST, riesgos y valores binarios.
-- `sst_stats`: media, varianza, desviación estándar y Welford.
-- `sst_histogram`: histogramas con underflow, overflow e inválidos.
-- `sst_rates`: tasas por exposición y factor configurable.
-- `sst_advanced`: CV, asimetría, kurtosis y percentiles.
-- `sst_contingency`: tablas de contingencia y chi-cuadrado.
-- `sst_correlation`: correlación de Pearson.
-- `sst_normality`: diagnóstico Jarque-Bera aproximado.
-- `sst_inference`: Poisson, riesgo relativo, odds ratio y pruebas aproximadas.
-- `sst_report`: reportes generales.
-- `sst_report_advanced`: reportes estadísticos avanzados y advertencias.
-- `logger`: logging de texto o JSON Lines.
-- `metrics`: duración y contadores de ejecución.
-
-## Uso preventivo correcto
-
-```text
-Datos SST existentes
-        ↓
-Mano detecta patrones y señales
-        ↓
-Profesional SST interpreta y valida
-        ↓
-Investigación preventiva
-        ↓
-Medidas de control y seguimiento
-```
-
-Mano puede ayudar a identificar áreas con mayor frecuencia, cambios temporales, distribución de severidad, diferencias entre turnos y posibles relaciones entre variables. No determina responsabilidades, no prueba causalidad y no reemplaza entrevistas, inspecciones, evidencias ni métodos formales de investigación.
-
-## Limitaciones actuales
-
-- No sustituye sistemas oficiales ni formularios regulatorios.
-- No certifica cumplimiento legal.
-- No determina causalidad.
-- No firma digitalmente reportes.
-- No gestiona expedientes médicos.
-- No propone automáticamente medidas de control.
-- Algunos métodos inferenciales son aproximados.
-- La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.mano` sigue pendiente.
-- La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
-
-## Instalación en Termux mediante APT
-
-Una vez publicado el repositorio APT, la instalación para una persona usuaria no requiere clonar el código ni compilar Mano. Se necesita la dirección pública del sitio APT configurado para la distribución y la clave pública del repositorio.
-
-```bash
-pkg install curl gnupg
-mkdir -p "$PREFIX/etc/apt/keyrings" "$PREFIX/etc/apt/sources.list.d"
-NETLIFY_REPO_URL="PEGA_AQUI_LA_DIRECCION_PUBLICA_DEL_REPOSITORIO"
-curl -fsSL "$NETLIFY_REPO_URL/mano-archive-keyring.asc" \
-  | gpg --dearmor \
-  > "$PREFIX/etc/apt/keyrings/mano-archive.gpg"
-printf 'deb [signed-by=%s] %s stable main\n' \
-  "$PREFIX/etc/apt/keyrings/mano-archive.gpg" \
-  "$NETLIFY_REPO_URL" \
-  > "$PREFIX/etc/apt/sources.list.d/mano.list"
-apt-get update --allow-releaseinfo-change
-pkg install mano
-```
-
-Para actualizar:
-
-```bash
-pkg update
-pkg upgrade mano
-```
-
-Para desinstalar solamente Mano:
-
-```bash
-apt remove mano
-```
-
-La dirección pública del repositorio debe copiarse desde el despliegue de Netlify; no debe confundirse con el panel privado de administración.
-
-## Empaquetado para Termux
-
-El flujo de empaquetado se encuentra en `packaging/termux/`. La primera fase genera un `.deb` local para la arquitectura de Termux donde se ejecuta:
-
-```bash
-./packaging/termux/build-local-deb.sh
-```
-
-Para ofrecer una instalación pública mediante:
-
-```bash
-pkg install mano
-```
-
-El repositorio APT se genera con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Actions lo publica en un sitio estático de Netlify; la clave privada GPG permanece en los secretos de Actions.
-
-Un paquete Termux no debe mezclarse con un paquete Debian/Ubuntu ni con un ejecutable Windows. Cada plataforma requiere su propia compilación y distribución. Consulta `packaging/termux/README.md` antes de publicar.
-
-El canal Debian/Ubuntu está en `packaging/debian/` y el canal Windows en `packaging/windows/`. La plantilla de automatización Linux/Windows está en `packaging/ci/build-release.yml`. El job Termux sigue siendo manual porque debe compilarse dentro del entorno Android/Termux y no debe sustituirse por un binario Linux con libc incompatible.
-
-## Próximas mejoras
-
-1. Completar la integración de inferencia con `.mano`.
-2. Añadir huellas SHA-256 de datos, scripts y reportes.
-3. Instrumentar completamente logger y métricas.
-4. Agregar pruebas estadísticas contra valores de referencia.
-5. Añadir análisis temporal y comparaciones antes/después.
-6. Crear una matriz configurable de peligros, controles y señales preventivas.
-7. Incorporar exportación tabular y documentación de métodos.
-8. Ejecutar validación con GCC, Clang, ASan, UBSan y pruebas de memoria.
-
-## Nota de responsabilidad
-
-Mano es una solución tecnológica de apoyo para análisis de datos SST y prevención. Las conclusiones que afecten la seguridad de trabajadores deben ser revisadas por personal competente y complementadas con la evidencia operativa correspondiente.
+Milena se distribuye bajo la licencia MIT.

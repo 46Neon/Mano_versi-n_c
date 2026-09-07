@@ -1,5 +1,5 @@
-#ifndef MANO_ANALYSIS_H
-#define MANO_ANALYSIS_H
+#ifndef MILENA_ANALYSIS_H
+#define MILENA_ANALYSIS_H
 
 #include "dataset.h"
 #include "schema.h"
@@ -14,18 +14,18 @@ typedef struct {
     double maximum;
 } SalesSummary;
 
-ManoStatus analysis_dataset_report(const Dataset *dataset,
-                                  const ManoSchema *schema,
+MilenaStatus analysis_dataset_report(const Dataset *dataset,
+                                  const MilenaSchema *schema,
                                   const char *output_json,
-                                  ManoError *error);
+                                  MilenaError *error);
 
-ManoStatus analysis_sales(const Dataset *dataset,
+MilenaStatus analysis_sales(const Dataset *dataset,
                           const char *date_column,
                           const char *price_column,
                           const char *quantity_column,
                           const char *output_json,
                           SalesSummary *summary,
-                          ManoError *error);
+                          MilenaError *error);
 
 bool analysis_ventas(const Dataset *dataset, const char *date_column,
                      const char *price_column, const char *quantity_column,

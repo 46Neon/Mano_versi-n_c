@@ -1,5 +1,5 @@
-#ifndef MANO_VM_H
-#define MANO_VM_H
+#ifndef MILENA_VM_H
+#define MILENA_VM_H
 
 #include "common.h"
 #include "ir.h"
@@ -14,7 +14,7 @@ typedef struct VirtualMachine {
     GC *gc;
     bool running;
     bool has_error;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
 } VirtualMachine;
 
 bool vm_init(VirtualMachine *vm, IRProgram *program);

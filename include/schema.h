@@ -1,40 +1,40 @@
-#ifndef MANO_SCHEMA_H
-#define MANO_SCHEMA_H
+#ifndef MILENA_SCHEMA_H
+#define MILENA_SCHEMA_H
 
 #include "common.h"
 
 typedef enum {
-    MANO_VAR_NUMERIC,
-    MANO_VAR_CATEGORICAL,
-    MANO_VAR_BINARY,
-    MANO_VAR_TEXT
-} ManoVariableType;
+    MILENA_VAR_NUMERIC,
+    MILENA_VAR_CATEGORICAL,
+    MILENA_VAR_BINARY,
+    MILENA_VAR_TEXT
+} MilenaVariableType;
 
 typedef enum {
-    MANO_ROLE_FEATURE,
-    MANO_ROLE_CATEGORICAL_INPUT,
-    MANO_ROLE_BINARY_OUTPUT
-} ManoVariableRole;
+    MILENA_ROLE_FEATURE,
+    MILENA_ROLE_CATEGORICAL_INPUT,
+    MILENA_ROLE_BINARY_OUTPUT
+} MilenaVariableRole;
 
 typedef struct {
     char *name;
-    ManoVariableType type;
-    ManoVariableRole role;
-} ManoVariable;
+    MilenaVariableType type;
+    MilenaVariableRole role;
+} MilenaVariable;
 
 typedef struct {
-    ManoVariable *variables;
+    MilenaVariable *variables;
     size_t count;
     size_t capacity;
-} ManoSchema;
+} MilenaSchema;
 
-void schema_init(ManoSchema *schema);
-void schema_destroy(ManoSchema *schema);
-ManoStatus schema_add(ManoSchema *schema, const char *name,
-                      ManoVariableType type, ManoVariableRole role,
-                      ManoError *error);
-int schema_index(const ManoSchema *schema, const char *name);
-const char *schema_type_name(ManoVariableType type);
-const char *schema_role_name(ManoVariableRole role);
+void schema_init(MilenaSchema *schema);
+void schema_destroy(MilenaSchema *schema);
+MilenaStatus schema_add(MilenaSchema *schema, const char *name,
+                      MilenaVariableType type, MilenaVariableRole role,
+                      MilenaError *error);
+int schema_index(const MilenaSchema *schema, const char *name);
+const char *schema_type_name(MilenaVariableType type);
+const char *schema_role_name(MilenaVariableRole role);
 
 #endif

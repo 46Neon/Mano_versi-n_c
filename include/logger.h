@@ -1,35 +1,35 @@
-#ifndef MANO_LOGGER_H
-#define MANO_LOGGER_H
+#ifndef MILENA_LOGGER_H
+#define MILENA_LOGGER_H
 
 #include "common.h"
 
 typedef enum {
-    MANO_LOG_DEBUG = 0,
-    MANO_LOG_INFO = 1,
-    MANO_LOG_WARN = 2,
-    MANO_LOG_ERROR = 3,
-    MANO_LOG_FATAL = 4
-} ManoLogLevel;
+    MILENA_LOG_DEBUG = 0,
+    MILENA_LOG_INFO = 1,
+    MILENA_LOG_WARN = 2,
+    MILENA_LOG_ERROR = 3,
+    MILENA_LOG_FATAL = 4
+} MilenaLogLevel;
 
 typedef struct {
-    ManoLogLevel minimum_level;
+    MilenaLogLevel minimum_level;
     FILE *output;
     bool json_format;
     char *job_id;
-} ManoLogger;
+} MilenaLogger;
 
-void mano_logger_init(ManoLogger *logger, ManoLogLevel minimum_level,
+void milena_logger_init(MilenaLogger *logger, MilenaLogLevel minimum_level,
                       FILE *output, bool json_format);
-void mano_logger_destroy(ManoLogger *logger);
-ManoStatus mano_logger_set_job_id(ManoLogger *logger, const char *job_id);
-void mano_logger_log(ManoLogger *logger, ManoLogLevel level,
+void milena_logger_destroy(MilenaLogger *logger);
+MilenaStatus milena_logger_set_job_id(MilenaLogger *logger, const char *job_id);
+void milena_logger_log(MilenaLogger *logger, MilenaLogLevel level,
                      const char *file, int line, const char *function,
                      const char *format, ...);
-const char *mano_log_level_name(ManoLogLevel level);
+const char *milena_log_level_name(MilenaLogLevel level);
 
-#define MANO_LOG_DEBUG(logger, ...) mano_logger_log((logger), MANO_LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define MANO_LOG_INFO(logger, ...) mano_logger_log((logger), MANO_LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define MANO_LOG_WARN(logger, ...) mano_logger_log((logger), MANO_LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define MANO_LOG_ERROR(logger, ...) mano_logger_log((logger), MANO_LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define MILENA_LOG_DEBUG(logger, ...) milena_logger_log((logger), MILENA_LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define MILENA_LOG_INFO(logger, ...) milena_logger_log((logger), MILENA_LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define MILENA_LOG_WARN(logger, ...) milena_logger_log((logger), MILENA_LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define MILENA_LOG_ERROR(logger, ...) milena_logger_log((logger), MILENA_LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 #endif

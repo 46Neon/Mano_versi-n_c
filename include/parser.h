@@ -1,5 +1,5 @@
-#ifndef MANO_PARSER_H
-#define MANO_PARSER_H
+#ifndef MILENA_PARSER_H
+#define MILENA_PARSER_H
 
 #include "common.h"
 #include "lexer.h"
@@ -10,7 +10,7 @@ typedef struct Parser {
     Token current;
     Token previous;
     bool has_error;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
 } Parser;
 
 void parser_init(Parser *parser, Lexer *lexer);

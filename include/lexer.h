@@ -1,5 +1,5 @@
-#ifndef MANO_LEXER_H
-#define MANO_LEXER_H
+#ifndef MILENA_LEXER_H
+#define MILENA_LEXER_H
 
 #include "common.h"
 #include "token.h"
@@ -12,7 +12,7 @@ typedef struct Lexer {
     int column;
     Token current_token;
     Token previous_token;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
 } Lexer;
 
 void lexer_init(Lexer *lexer, const char *source);

@@ -44,52 +44,52 @@ void sst_event_list_destroy(SstEventList *list) {
     sst_event_list_init(list);
 }
 
-static ManoStatus event_copy(SstEvent *destination, const SstEvent *source) {
+static MilenaStatus event_copy(SstEvent *destination, const SstEvent *source) {
     sst_event_init(destination);
     *destination = *source;
-    destination->id_evento = mano_strdup(source->id_evento);
-    destination->area = mano_strdup(source->area);
-    destination->cargo = mano_strdup(source->cargo);
-    destination->turno = mano_strdup(source->turno);
-    destination->tipo_riesgo_original = mano_strdup(source->tipo_riesgo_original);
+    destination->id_evento = milena_strdup(source->id_evento);
+    destination->area = milena_strdup(source->area);
+    destination->cargo = milena_strdup(source->cargo);
+    destination->turno = milena_strdup(source->turno);
+    destination->tipo_riesgo_original = milena_strdup(source->tipo_riesgo_original);
     if ((source->id_evento && !destination->id_evento) ||
         (source->area && !destination->area) ||
         (source->cargo && !destination->cargo) ||
         (source->turno && !destination->turno) ||
         (source->tipo_riesgo_original && !destination->tipo_riesgo_original)) {
         sst_event_destroy(destination);
-        return MANO_ERR_MEMORY;
+        return MILENA_ERR_MEMORY;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_event_list_append(SstEventList *list, const SstEvent *event,
-                                 ManoError *error) {
-    if (!list || !event) return MANO_ERR_ARGUMENT;
+MilenaStatus sst_event_list_append(SstEventList *list, const SstEvent *event,
+                                 MilenaError *error) {
+    if (!list || !event) return MILENA_ERR_ARGUMENT;
     if (list->count == list->capacity) {
         size_t next = list->capacity ? list->capacity * 2 : 64;
         if (next < list->capacity || next > SIZE_MAX / sizeof(*list->items)) {
-            mano_error_set(error, MANO_ERR_OVERFLOW, 0, 0, list->count,
+            milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, list->count,
                            "La lista SST supera su capacidad");
-            return MANO_ERR_OVERFLOW;
+            return MILENA_ERR_OVERFLOW;
         }
         SstEvent *tmp = (SstEvent *)realloc(list->items, next * sizeof(*tmp));
         if (!tmp) {
-            mano_error_set(error, MANO_ERR_MEMORY, 0, 0, list->count,
+            milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, list->count,
                            "Sin memoria para evento SST");
-            return MANO_ERR_MEMORY;
+            return MILENA_ERR_MEMORY;
         }
         list->items = tmp;
         list->capacity = next;
     }
-    ManoStatus status = event_copy(&list->items[list->count], event);
-    if (status != MANO_OK) {
-        mano_error_set(error, status, 0, 0, list->count,
+    MilenaStatus status = event_copy(&list->items[list->count], event);
+    if (status != MILENA_OK) {
+        milena_error_set(error, status, 0, 0, list->count,
                        "No se pudo copiar evento SST");
         return status;
     }
     list->count++;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 SstRiskType sst_risk_parse(const char *text) {

@@ -25,14 +25,14 @@ for command in dpkg-deb dpkg-scanpackages apt-ftparchive gpg; do
 done
 
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$OUTPUT_DIR/pool/main/m/mano" "$OUTPUT_DIR/dists/stable/main"
+mkdir -p "$OUTPUT_DIR/pool/main/m/milena" "$OUTPUT_DIR/dists/stable/main"
 
-for package in "$INPUT_DIR"/mano_*.deb; do
+for package in "$INPUT_DIR"/milena_*.deb; do
     [[ -f "$package" ]] || continue
     arch="$(dpkg-deb -f "$package" Architecture)"
     destination="$OUTPUT_DIR/dists/stable/main/binary-$arch"
     mkdir -p "$destination"
-    cp "$package" "$OUTPUT_DIR/pool/main/m/mano/"
+    cp "$package" "$OUTPUT_DIR/pool/main/m/milena/"
     # Generar rutas relativas al repositorio; no incluir dist/apt en Filename.
     (
         cd "$OUTPUT_DIR"
@@ -43,8 +43,8 @@ done
 
 RELEASE_CONFIG="$OUTPUT_DIR/.apt-ftparchive.conf"
 cat > "$RELEASE_CONFIG" <<EOF
-APT::FTPArchive::Release::Origin "Mano";
-APT::FTPArchive::Release::Label "Mano APT";
+APT::FTPArchive::Release::Origin "Milena";
+APT::FTPArchive::Release::Label "Milena APT";
 APT::FTPArchive::Release::Suite "stable";
 APT::FTPArchive::Release::Codename "stable";
 APT::FTPArchive::Release::Components "main";

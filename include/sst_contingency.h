@@ -1,5 +1,5 @@
-#ifndef MANO_SST_CONTINGENCY_H
-#define MANO_SST_CONTINGENCY_H
+#ifndef MILENA_SST_CONTINGENCY_H
+#define MILENA_SST_CONTINGENCY_H
 
 #include "common.h"
 
@@ -20,13 +20,13 @@ typedef struct {
 
 void sst_contingency_init(SstContingency2D *table);
 void sst_contingency_destroy(SstContingency2D *table);
-ManoStatus sst_contingency_build(const char *const *rows,
+MilenaStatus sst_contingency_build(const char *const *rows,
                                  const char *const *columns,
                                  size_t count,
                                  SstContingency2D *table,
-                                 ManoError *error);
-ManoStatus sst_contingency_chi_square(const SstContingency2D *table,
+                                 MilenaError *error);
+MilenaStatus sst_contingency_chi_square(const SstContingency2D *table,
                                       SstChiSquareResult *result,
-                                      ManoError *error);
+                                      MilenaError *error);
 
 #endif

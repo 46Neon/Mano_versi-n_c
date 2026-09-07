@@ -1,5 +1,5 @@
-#ifndef MANO_GC_H
-#define MANO_GC_H
+#ifndef MILENA_GC_H
+#define MILENA_GC_H
 
 #include "common.h"
 

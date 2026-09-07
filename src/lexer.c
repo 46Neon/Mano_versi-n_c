@@ -107,7 +107,7 @@ void lexer_init(Lexer *lexer, const char *source) {
     lexer->length = strlen(source);
     lexer->line = 1;
     lexer->column = 1;
-    mano_error_init(&lexer->error);
+    milena_error_init(&lexer->error);
     lexer->current_token.type = TOKEN_EOF;
     lexer->current_token.lexeme[0] = '\0';
     lexer->previous_token = lexer->current_token;
@@ -171,6 +171,20 @@ Token lexer_next_token(Lexer *lexer) {
     if (c == ')') {
         lexer_advance_char(lexer);
         token = lexer_create_token(lexer, TOKEN_PAR_DER, ")");
+        lexer->current_token = token;
+        return token;
+    }
+
+    if (c == '[') {
+        lexer_advance_char(lexer);
+        token = lexer_create_token(lexer, TOKEN_CORCHETE_IZQ, "[");
+        lexer->current_token = token;
+        return token;
+    }
+
+    if (c == ']') {
+        lexer_advance_char(lexer);
+        token = lexer_create_token(lexer, TOKEN_CORCHETE_DER, "]");
         lexer->current_token = token;
         return token;
     }
@@ -343,7 +357,7 @@ Token lexer_next_token(Lexer *lexer) {
     token = lexer_create_token(lexer, TOKEN_ERROR, "carácter desconocido");
     char err_msg[64];
     snprintf(err_msg, sizeof(err_msg), "Carácter inesperado: '%c'", c);
-    mano_error_set(&lexer->error, MANO_ERROR_LEXICAL, err_msg, lexer->line, lexer->column);
+    milena_error_set(&lexer->error, MILENA_ERROR_LEXICAL, err_msg, lexer->line, lexer->column);
     lexer_advance_char(lexer);
     lexer->current_token = token;
     return token;
@@ -377,7 +391,7 @@ bool lexer_match(Lexer *lexer, TokenType type) {
 
 bool lexer_expect(Lexer *lexer, TokenType type, const char *error_msg) {
     if (lexer->current_token.type != type) {
-        mano_error_set(&lexer->error, MANO_ERROR_SYNTAX, error_msg, 
+        milena_error_set(&lexer->error, MILENA_ERROR_SYNTAX, error_msg, 
                       lexer->current_token.line, lexer->current_token.column);
         return false;
     }
@@ -392,7 +406,7 @@ const char *token_type_name(TokenType type) {
         "RESUMIR", "CARGAR", "NULOS", "DUPLICADOS", "CONDICION",
         "EXTRAER", "TOTAL", "PERIODO",
         "PUNTO", "NUMERAL", "LLAVE_IZQ", "LLAVE_DER", "PAR_IZQ", "PAR_DER",
-        "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
+        "CORCHETE_IZQ", "CORCHETE_DER", "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
         "IGUAL", "IGUAL_IGUAL", "DISTINTO", "MAYOR", "MAYOR_IGUAL",
         "MENOR", "MENOR_IGUAL", "MAS", "MENOS", "POR", "DIV", "ASIGNACION",
         "IDENTIFICADOR", "CADENA", "NUMERO", "BOOLEANO", "COMMENT"

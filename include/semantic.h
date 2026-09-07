@@ -1,5 +1,5 @@
-#ifndef MANO_SEMANTIC_H
-#define MANO_SEMANTIC_H
+#ifndef MILENA_SEMANTIC_H
+#define MILENA_SEMANTIC_H
 
 #include "common.h"
 #include "ast.h"
@@ -8,7 +8,7 @@
 typedef struct SemanticAnalyzer {
     SymbolTable *symbols;
     ASTNode *ast;
-    ManoErrorInfo error;
+    MilenaErrorInfo error;
     bool has_error;
 } SemanticAnalyzer;
 

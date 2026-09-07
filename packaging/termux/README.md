@@ -1,4 +1,4 @@
-# Paquete Termux de Mano
+# Paquete Termux de Milena
 
 ## Estado
 
@@ -7,7 +7,7 @@ Este directorio contiene el primer flujo reproducible para construir un `.deb` l
 El flujo correcto es:
 
 ```text
-fuente Mano
+fuente Milena
   ↓
 clang + make + pruebas
   ↓
@@ -17,7 +17,7 @@ prueba con dpkg/apt local
   ↓
 repositorio APT firmado
   ↓
-pkg install mano
+pkg install milena
 ```
 
 ## Requisitos en Termux
@@ -39,28 +39,28 @@ Desde la raíz del proyecto:
 
 El script:
 
-1. compila Mano con Clang;
+1. compila Milena con Clang;
 2. ejecuta las pruebas;
 3. obtiene la arquitectura de Termux;
 4. instala el binario y la documentación bajo `$PREFIX` dentro del staging;
-5. genera `dist/termux/mano_VERSION_ARCH.deb`.
+5. genera `dist/termux/milena_VERSION_ARCH.deb`.
 
 La instalación local de prueba puede hacerse con:
 
 ```bash
-dpkg -i dist/termux/mano_*.deb
-mano --help
+dpkg -i dist/termux/milena_*.deb
+milena --help
 ```
 
 Para desinstalar:
 
 ```bash
-apt remove mano
+apt remove milena
 ```
 
 ## Repositorio APT
 
-Para que un usuario pueda ejecutar `pkg install mano`, no basta con publicar el `.deb` en GitHub. El servidor debe contener la estructura APT completa:
+Para que un usuario pueda ejecutar `pkg install milena`, no basta con publicar el `.deb` en GitHub. El servidor debe contener la estructura APT completa:
 
 ```text
 dists/stable/Release
@@ -69,7 +69,7 @@ dists/stable/main/binary-aarch64/Packages.gz
 dists/stable/main/binary-arm/Packages.gz
 dists/stable/main/binary-i686/Packages.gz
 dists/stable/main/binary-x86_64/Packages.gz
-pool/main/m/mano/*.deb
+pool/main/m/milena/*.deb
 ```
 
 Los índices deben generarse en CI y el repositorio debe firmarse. El usuario debe instalar o confiar en la clave pública mediante un keyring; firmar sin distribuir la clave no elimina las advertencias de confianza.
@@ -87,7 +87,7 @@ x86_64
 i686
 ```
 
-La matriz real debe ajustarse a las arquitecturas soportadas por Termux y a las que Mano decida publicar.
+La matriz real debe ajustarse a las arquitecturas soportadas por Termux y a las que Milena decida publicar.
 
 ## Rutas
 

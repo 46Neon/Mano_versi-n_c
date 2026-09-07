@@ -12,7 +12,7 @@ static void json_string_advanced(FILE *out, const char *text) {
     fputc('"', out);
 }
 
-ManoStatus sst_report_write_advanced_json(
+MilenaStatus sst_report_write_advanced_json(
     const char *filename,
     const SstAdvancedStats *advanced,
     const SstPoissonInterval *poisson,
@@ -20,13 +20,13 @@ ManoStatus sst_report_write_advanced_json(
     const SstMannWhitneyResult *mann_whitney,
     const SstWilcoxonResult *wilcoxon,
     const SstChiSquareResult *chi_square,
-    ManoError *error
+    MilenaError *error
 ) {
-    if (!filename || !advanced) return MANO_ERR_ARGUMENT;
+    if (!filename || !advanced) return MILENA_ERR_ARGUMENT;
     FILE *out = fopen(filename, "wb");
     if (!out) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir reporte avanzado SST");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir reporte avanzado SST");
+        return MILENA_ERR_IO;
     }
     fprintf(out, "{\n  \"analisis\": \"sst_investigacion\",\n");
     fprintf(out, "  \"estadistica_avanzada\": {\"n\": %zu, \"invalidos\": %zu, "
@@ -86,9 +86,9 @@ ManoStatus sst_report_write_advanced_json(
     bool io_error = ferror(out) != 0;
     if (fclose(out) != 0) io_error = true;
     if (io_error) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "Error escribiendo reporte avanzado SST");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "Error escribiendo reporte avanzado SST");
+        return MILENA_ERR_IO;
     }
     (void)json_string_advanced;
-    return MANO_OK;
+    return MILENA_OK;
 }

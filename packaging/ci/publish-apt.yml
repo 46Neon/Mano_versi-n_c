@@ -1,4 +1,4 @@
-name: Publish Mano APT repository
+name: Publish Milena APT repository
 
 on:
   workflow_dispatch:
@@ -69,8 +69,8 @@ jobs:
           KEY_ID="${KEY_ID#0x}"
           export MANO_GPG_KEY_ID="$KEY_ID"
           ./packaging/termux/generate-apt-repo.sh dist/inputs dist/apt
-          gpg --batch --armor --export "$KEY_ID" > dist/apt/mano-archive-keyring.asc
-          test -s dist/apt/mano-archive-keyring.asc
+          gpg --batch --armor --export "$KEY_ID" > dist/apt/milena-archive-keyring.asc
+          test -s dist/apt/milena-archive-keyring.asc
 
       - name: Install Netlify CLI
         run: npm install --global netlify-cli
@@ -83,4 +83,4 @@ jobs:
         run: |
           test -n "$NETLIFY_AUTH_TOKEN"
           test -n "$NETLIFY_SITE_ID"
-          netlify deploy --dir=dist/apt --prod --site="$NETLIFY_SITE_ID" --message="Mano ${{ steps.release.outputs.tag }}"
+          netlify deploy --dir=dist/apt --prod --site="$NETLIFY_SITE_ID" --message="Milena ${{ steps.release.outputs.tag }}"

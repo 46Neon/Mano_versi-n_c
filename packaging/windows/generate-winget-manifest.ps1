@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)][string]$InstallerUrl,
     [Parameter(Mandatory = $true)][string]$InstallerSha256,
     [string]$Publisher = '46Neon',
-    [string]$PackageIdentifier = '46Neon.Mano'
+    [string]$PackageIdentifier = '46Neon.Milena'
 )
 
 if ($InstallerSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
@@ -29,11 +29,11 @@ PackageVersion: $Version
 PackageLocale: en-US
 Publisher: $Publisher
 PublisherUrl: https://github.com/46Neon
-PackageName: Mano
-PackageUrl: https://github.com/46Neon/Mano_versi-n_c
+PackageName: Milena
+PackageUrl: https://github.com/46Neon/Milena_versi-n_c
 License: MIT
-ShortDescription: Mano SST data analysis language
-Description: Mano analyzes existing occupational safety and health data to detect statistical patterns and support accident prevention.
+ShortDescription: Milena SST data analysis language
+Description: Milena analyzes existing occupational safety and health data to detect statistical patterns and support accident prevention.
 ManifestType: defaultLocale
 ManifestVersion: 1.9.0
 "@ | Set-Content (Join-Path $root "$PackageIdentifier.locale.en-US.yaml")

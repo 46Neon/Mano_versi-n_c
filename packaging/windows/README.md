@@ -2,7 +2,7 @@
 
 Windows no utiliza `apt` ni `pkg`. El canal de distribución será:
 
-1. `mano.exe` compilado en un runner Windows;
+1. `milena.exe` compilado en un runner Windows;
 2. instalador `.exe` o `.msi`;
 3. archivo `.zip` portable;
 4. manifest para WinGet después de publicar una versión pública.

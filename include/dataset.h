@@ -1,5 +1,5 @@
-#ifndef MANO_DATASET_H
-#define MANO_DATASET_H
+#ifndef MILENA_DATASET_H
+#define MILENA_DATASET_H
 
 #include "common.h"
 
@@ -22,25 +22,25 @@ typedef struct {
 DatasetLimits dataset_default_limits(void);
 void dataset_init(Dataset *dataset);
 void dataset_destroy(Dataset *dataset);
-ManoStatus dataset_load_csv_with_limits(Dataset *dataset, const char *filename,
+MilenaStatus dataset_load_csv_with_limits(Dataset *dataset, const char *filename,
                                         char delimiter, const DatasetLimits *limits,
-                                        ManoError *error);
-ManoStatus dataset_load_csv(Dataset *dataset, const char *filename,
-                            char delimiter, ManoError *error);
-ManoStatus dataset_save_json(const Dataset *dataset, const char *filename,
-                             ManoError *error);
+                                        MilenaError *error);
+MilenaStatus dataset_load_csv(Dataset *dataset, const char *filename,
+                            char delimiter, MilenaError *error);
+MilenaStatus dataset_save_json(const Dataset *dataset, const char *filename,
+                             MilenaError *error);
 int dataset_column_index(const Dataset *dataset, const char *name);
-ManoStatus dataset_remove_null_rows(Dataset *dataset, ManoError *error);
-ManoStatus dataset_remove_duplicates(Dataset *dataset, ManoError *error);
-ManoStatus dataset_add_product(Dataset *dataset, const char *left,
+MilenaStatus dataset_remove_null_rows(Dataset *dataset, MilenaError *error);
+MilenaStatus dataset_remove_duplicates(Dataset *dataset, MilenaError *error);
+MilenaStatus dataset_add_product(Dataset *dataset, const char *left,
                                const char *right, const char *output,
-                               ManoError *error);
-ManoStatus dataset_add_month(Dataset *dataset, const char *date_column,
-                             const char *output, ManoError *error);
-ManoStatus dataset_filter_positive_product(Dataset *dataset,
+                               MilenaError *error);
+MilenaStatus dataset_add_month(Dataset *dataset, const char *date_column,
+                             const char *output, MilenaError *error);
+MilenaStatus dataset_filter_positive_product(Dataset *dataset,
                                            const char *left,
                                            const char *right,
-                                           ManoError *error);
+                                           MilenaError *error);
 void dataset_print(const Dataset *dataset, size_t max_rows, FILE *stream);
 
 /* Compatibility names retained from the original project. */

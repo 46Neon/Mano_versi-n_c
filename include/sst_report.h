@@ -1,5 +1,5 @@
-#ifndef MANO_SST_REPORT_H
-#define MANO_SST_REPORT_H
+#ifndef MILENA_SST_REPORT_H
+#define MILENA_SST_REPORT_H
 
 #include "common.h"
 #include "sst_advanced.h"
@@ -10,14 +10,14 @@
 #include "sst_rates.h"
 #include "sst_stats.h"
 
-ManoStatus sst_report_write_json(const char *filename,
+MilenaStatus sst_report_write_json(const char *filename,
                                  const SstEventList *events,
                                  const SstStats *severity,
                                  const SstHistogram *histogram,
                                  const SstRateResult *rate,
-                                 ManoError *error);
+                                 MilenaError *error);
 
-ManoStatus sst_report_write_advanced_json(
+MilenaStatus sst_report_write_advanced_json(
     const char *filename,
     const SstAdvancedStats *advanced,
     const SstPoissonInterval *poisson,
@@ -25,7 +25,7 @@ ManoStatus sst_report_write_advanced_json(
     const SstMannWhitneyResult *mann_whitney,
     const SstWilcoxonResult *wilcoxon,
     const SstChiSquareResult *chi_square,
-    ManoError *error
+    MilenaError *error
 );
 
 #endif

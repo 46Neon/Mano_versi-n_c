@@ -8,12 +8,13 @@
 #include "sst_model.h"
 #include "sst_normality.h"
 #include "sst_rates.h"
+#include "array.h"
 #include <ctype.h>
 
-static char *read_file(const char *filename, ManoError *error) {
+static char *read_file(const char *filename, MilenaError *error) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir script");
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir script");
         return NULL;
     }
     size_t cap = 4096, len = 0;
@@ -110,30 +111,30 @@ static bool parent_path(const char *path, char *out, size_t out_size) {
 
 /*
  * Busca los datos primero desde el directorio actual y luego desde el
- * directorio del script y sus padres. Esto permite ejecutar un .mano desde
+ * directorio del script y sus padres. Esto permite ejecutar un .milena desde
  * cualquier carpeta sin romper scripts que usan rutas relativas al proyecto.
  */
-static ManoStatus resolve_input_path(const char *script_file, const char *requested,
+static MilenaStatus resolve_input_path(const char *script_file, const char *requested,
                                      char *resolved, size_t resolved_size,
                                      char *base, size_t base_size,
-                                     ManoError *error) {
-    if (!requested || !resolved || !base || requested[0] == '\0') return MANO_ERR_ARGUMENT;
+                                     MilenaError *error) {
+    if (!requested || !resolved || !base || requested[0] == '\0') return MILENA_ERR_ARGUMENT;
     if (absolute_path(requested)) {
-        if (strlen(requested) + 1 > resolved_size) return MANO_ERR_OVERFLOW;
+        if (strlen(requested) + 1 > resolved_size) return MILENA_ERR_OVERFLOW;
         strcpy(resolved, requested);
         if (!regular_file_exists(resolved)) goto not_found;
         char temporary[1024];
-        if (strlen(requested) + 1 > sizeof(temporary)) return MANO_ERR_OVERFLOW;
+        if (strlen(requested) + 1 > sizeof(temporary)) return MILENA_ERR_OVERFLOW;
         strcpy(temporary, requested);
         char *slash = strrchr(temporary, '/');
         if (slash) { if (slash == temporary) strcpy(base, "/"); else *slash = '\0', strcpy(base, temporary); }
         else strcpy(base, ".");
-        return MANO_OK;
+        return MILENA_OK;
     }
 
     char script_dir[1024] = ".";
     if (script_file && script_file[0]) {
-        if (strlen(script_file) + 1 > sizeof(script_dir)) return MANO_ERR_OVERFLOW;
+        if (strlen(script_file) + 1 > sizeof(script_dir)) return MILENA_ERR_OVERFLOW;
         strcpy(script_dir, script_file);
         char *slash = strrchr(script_dir, '/');
         if (slash) { if (slash == script_dir) script_dir[1] = '\0'; else *slash = '\0'; }
@@ -141,16 +142,16 @@ static ManoStatus resolve_input_path(const char *script_file, const char *reques
     }
     char candidate[2048];
     if (regular_file_exists(requested)) {
-        if (strlen(requested) + 1 > resolved_size || 2 > base_size) return MANO_ERR_OVERFLOW;
-        strcpy(resolved, requested); strcpy(base, "."); return MANO_OK;
+        if (strlen(requested) + 1 > resolved_size || 2 > base_size) return MILENA_ERR_OVERFLOW;
+        strcpy(resolved, requested); strcpy(base, "."); return MILENA_OK;
     }
     char search_base[1024];
     strcpy(search_base, script_dir);
     for (size_t depth = 0; depth < 6; depth++) {
-        if (!join_path(search_base, requested, candidate, sizeof(candidate))) return MANO_ERR_OVERFLOW;
+        if (!join_path(search_base, requested, candidate, sizeof(candidate))) return MILENA_ERR_OVERFLOW;
         if (regular_file_exists(candidate)) {
-            if (strlen(candidate) + 1 > resolved_size || strlen(search_base) + 1 > base_size) return MANO_ERR_OVERFLOW;
-            strcpy(resolved, candidate); strcpy(base, search_base); return MANO_OK;
+            if (strlen(candidate) + 1 > resolved_size || strlen(search_base) + 1 > base_size) return MILENA_ERR_OVERFLOW;
+            strcpy(resolved, candidate); strcpy(base, search_base); return MILENA_OK;
         }
         char parent[1024];
         if (!parent_path(search_base, parent, sizeof(parent))) break;
@@ -158,35 +159,35 @@ static ManoStatus resolve_input_path(const char *script_file, const char *reques
     }
 
 not_found:
-    mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir el CSV indicado por el script");
-    return MANO_ERR_IO;
+    milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir el CSV indicado por el script");
+    return MILENA_ERR_IO;
 }
 
-static ManoStatus resolve_output_path(const char *requested, const char *base,
+static MilenaStatus resolve_output_path(const char *requested, const char *base,
                                       char *resolved, size_t resolved_size) {
-    if (!requested || !resolved) return MANO_ERR_ARGUMENT;
+    if (!requested || !resolved) return MILENA_ERR_ARGUMENT;
     if (absolute_path(requested)) {
-        if (strlen(requested) + 1 > resolved_size) return MANO_ERR_OVERFLOW;
-        strcpy(resolved, requested); return MANO_OK;
+        if (strlen(requested) + 1 > resolved_size) return MILENA_ERR_OVERFLOW;
+        strcpy(resolved, requested); return MILENA_OK;
     }
-    if (!join_path(base, requested, resolved, resolved_size)) return MANO_ERR_OVERFLOW;
-    return MANO_OK;
+    if (!join_path(base, requested, resolved, resolved_size)) return MILENA_ERR_OVERFLOW;
+    return MILENA_OK;
 }
 
-static ManoVariableType parse_type(const char *text, bool *valid) {
+static MilenaVariableType parse_type(const char *text, bool *valid) {
     *valid = true;
-    if (strcmp(text, "numerica") == 0 || strcmp(text, "numeric") == 0) return MANO_VAR_NUMERIC;
-    if (strcmp(text, "categorica") == 0 || strcmp(text, "categorical") == 0) return MANO_VAR_CATEGORICAL;
-    if (strcmp(text, "binaria") == 0 || strcmp(text, "binary") == 0) return MANO_VAR_BINARY;
-    if (strcmp(text, "fecha") == 0 || strcmp(text, "date") == 0) return MANO_VAR_TEXT;
-    if (strcmp(text, "texto") == 0 || strcmp(text, "text") == 0) return MANO_VAR_TEXT;
+    if (strcmp(text, "numerica") == 0 || strcmp(text, "numeric") == 0) return MILENA_VAR_NUMERIC;
+    if (strcmp(text, "categorica") == 0 || strcmp(text, "categorical") == 0) return MILENA_VAR_CATEGORICAL;
+    if (strcmp(text, "binaria") == 0 || strcmp(text, "binary") == 0) return MILENA_VAR_BINARY;
+    if (strcmp(text, "fecha") == 0 || strcmp(text, "date") == 0) return MILENA_VAR_TEXT;
+    if (strcmp(text, "texto") == 0 || strcmp(text, "text") == 0) return MILENA_VAR_TEXT;
     *valid = false;
-    return MANO_VAR_TEXT;
+    return MILENA_VAR_TEXT;
 }
 
-static ManoStatus parse_schema(const char *script, ManoSchema *schema, ManoError *error) {
-    char *copy = mano_strdup(script);
-    if (!copy) return MANO_ERR_MEMORY;
+static MilenaStatus parse_schema(const char *script, MilenaSchema *schema, MilenaError *error) {
+    char *copy = milena_strdup(script);
+    if (!copy) return MILENA_ERR_MEMORY;
     char *line = strtok(copy, "\n\r");
     size_t line_number = 0;
     while (line) {
@@ -195,49 +196,49 @@ static ManoStatus parse_schema(const char *script, ManoSchema *schema, ManoError
         if (strncmp(text, "variable ", 9) == 0) {
             char name[256], type_name[64];
             if (sscanf(text + 9, "%255s %63s", name, type_name) != 2) {
-                mano_error_set(error, MANO_ERR_PARSE, line_number, 1, 0,
+                milena_error_set(error, MILENA_ERR_PARSE, line_number, 1, 0,
                                "Sintaxis: variable nombre tipo");
-                free(copy); return MANO_ERR_PARSE;
+                free(copy); return MILENA_ERR_PARSE;
             }
             bool valid;
-            ManoVariableType type = parse_type(type_name, &valid);
+            MilenaVariableType type = parse_type(type_name, &valid);
             if (!valid) {
-                mano_error_set(error, MANO_ERR_TYPE, line_number, 1, 0,
+                milena_error_set(error, MILENA_ERR_TYPE, line_number, 1, 0,
                                "Tipo de variable desconocido");
-                free(copy); return MANO_ERR_TYPE;
+                free(copy); return MILENA_ERR_TYPE;
             }
-            ManoStatus status = schema_add(schema, name, type, MANO_ROLE_FEATURE, error);
-            if (status != MANO_OK) { free(copy); return status; }
+            MilenaStatus status = schema_add(schema, name, type, MILENA_ROLE_FEATURE, error);
+            if (status != MILENA_OK) { free(copy); return status; }
         } else if (strncmp(text, "entrada categorica", 18) == 0) {
             char name[256];
             if (!find_quoted_after(text, "entrada categorica", name, sizeof(name))) {
-                mano_error_set(error, MANO_ERR_PARSE, line_number, 1, 0,
+                milena_error_set(error, MILENA_ERR_PARSE, line_number, 1, 0,
                                "Sintaxis: entrada categorica \"columna\"");
-                free(copy); return MANO_ERR_PARSE;
+                free(copy); return MILENA_ERR_PARSE;
             }
-            ManoStatus status = schema_add(schema, name, MANO_VAR_CATEGORICAL,
-                                           MANO_ROLE_CATEGORICAL_INPUT, error);
-            if (status != MANO_OK) { free(copy); return status; }
+            MilenaStatus status = schema_add(schema, name, MILENA_VAR_CATEGORICAL,
+                                           MILENA_ROLE_CATEGORICAL_INPUT, error);
+            if (status != MILENA_OK) { free(copy); return status; }
         } else if (strncmp(text, "salida binaria", 14) == 0) {
             char name[256];
             if (!find_quoted_after(text, "salida binaria", name, sizeof(name))) {
-                mano_error_set(error, MANO_ERR_PARSE, line_number, 1, 0,
+                milena_error_set(error, MILENA_ERR_PARSE, line_number, 1, 0,
                                "Sintaxis: salida binaria \"columna\"");
-                free(copy); return MANO_ERR_PARSE;
+                free(copy); return MILENA_ERR_PARSE;
             }
-            ManoStatus status = schema_add(schema, name, MANO_VAR_BINARY,
-                                           MANO_ROLE_BINARY_OUTPUT, error);
-            if (status != MANO_OK) { free(copy); return status; }
+            MilenaStatus status = schema_add(schema, name, MILENA_VAR_BINARY,
+                                           MILENA_ROLE_BINARY_OUTPUT, error);
+            if (status != MILENA_OK) { free(copy); return status; }
         }
         line = strtok(NULL, "\n\r");
     }
     free(copy);
     if (schema->count == 0) {
-        mano_error_set(error, MANO_ERR_PARSE, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
                        "El script debe declarar al menos una variable");
-        return MANO_ERR_PARSE;
+        return MILENA_ERR_PARSE;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 static bool command_known(const char *text) {
@@ -253,9 +254,9 @@ static bool command_known(const char *text) {
     return false;
 }
 
-static ManoStatus validate_commands(const char *script, ManoError *error) {
-    char *copy = mano_strdup(script);
-    if (!copy) return MANO_ERR_MEMORY;
+static MilenaStatus validate_commands(const char *script, MilenaError *error) {
+    char *copy = milena_strdup(script);
+    if (!copy) return MILENA_ERR_MEMORY;
     char *line = strtok(copy, "\n\r");
     size_t line_number = 0;
     while (line) {
@@ -263,70 +264,70 @@ static ManoStatus validate_commands(const char *script, ManoError *error) {
         char *text = trim_left(line);
         if (text[0] == '#') {
             if (!command_known(text)) {
-                mano_error_set(error, MANO_ERR_UNSUPPORTED, line_number, 1, 0,
-                               "Comando Mano no reconocido; no se ignorará silenciosamente");
+                milena_error_set(error, MILENA_ERR_UNSUPPORTED, line_number, 1, 0,
+                               "Comando Milena no reconocido; no se ignorará silenciosamente");
                 free(copy);
-                return MANO_ERR_UNSUPPORTED;
+                return MILENA_ERR_UNSUPPORTED;
             }
         }
         line = strtok(NULL, "\n\r");
     }
     free(copy);
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-static ManoStatus numeric_column(const Dataset *dataset, const char *name,
-                                 double **values, size_t *count, ManoError *error) {
+static MilenaStatus numeric_column(const Dataset *dataset, const char *name,
+                                 double **values, size_t *count, MilenaError *error) {
     int index = dataset_column_index(dataset, name);
     if (index < 0) {
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0, "Columna numérica inexistente");
-        return MANO_ERR_DATA;
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0, "Columna numérica inexistente");
+        return MILENA_ERR_DATA;
     }
     double *result = (double *)calloc(dataset->row_count, sizeof(*result));
-    if (dataset->row_count && !result) return MANO_ERR_MEMORY;
+    if (dataset->row_count && !result) return MILENA_ERR_MEMORY;
     size_t used = 0;
     for (size_t r = 0; r < dataset->row_count; r++) {
         double value;
-        if (mano_parse_double(dataset->rows[r][index], &value) == MANO_OK) {
+        if (milena_parse_double(dataset->rows[r][index], &value) == MILENA_OK) {
             result[used++] = value;
         }
     }
     if (used == 0) {
         free(result);
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0, "Columna sin valores numéricos válidos");
-        return MANO_ERR_DATA;
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0, "Columna sin valores numéricos válidos");
+        return MILENA_ERR_DATA;
     }
     *values = result;
     *count = used;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-static ManoStatus paired_columns(const Dataset *dataset, const char *left,
+static MilenaStatus paired_columns(const Dataset *dataset, const char *left,
                                  const char *right, double **x, double **y,
-                                 size_t *count, ManoError *error) {
+                                 size_t *count, MilenaError *error) {
     int li = dataset_column_index(dataset, left);
     int ri = dataset_column_index(dataset, right);
-    if (li < 0 || ri < 0) return MANO_ERR_DATA;
+    if (li < 0 || ri < 0) return MILENA_ERR_DATA;
     double *xx = (double *)calloc(dataset->row_count, sizeof(*xx));
     double *yy = (double *)calloc(dataset->row_count, sizeof(*yy));
     if ((dataset->row_count && !xx) || (dataset->row_count && !yy)) {
-        free(xx); free(yy); return MANO_ERR_MEMORY;
+        free(xx); free(yy); return MILENA_ERR_MEMORY;
     }
     size_t used = 0;
     for (size_t r = 0; r < dataset->row_count; r++) {
         double a, b;
-        if (mano_parse_double(dataset->rows[r][li], &a) == MANO_OK &&
-            mano_parse_double(dataset->rows[r][ri], &b) == MANO_OK) {
+        if (milena_parse_double(dataset->rows[r][li], &a) == MILENA_OK &&
+            milena_parse_double(dataset->rows[r][ri], &b) == MILENA_OK) {
             xx[used] = a; yy[used] = b; used++;
         }
     }
     if (used < 3) {
         free(xx); free(yy);
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0, "Pocos pares numéricos válidos");
-        return MANO_ERR_DATA;
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0, "Pocos pares numéricos válidos");
+        return MILENA_ERR_DATA;
     }
     *x = xx; *y = yy; *count = used;
-    return MANO_OK;
+    return MILENA_OK;
 }
 
 static void json_text(FILE *out, const char *text) {
@@ -340,30 +341,30 @@ static void json_text(FILE *out, const char *text) {
     fputc('"', out);
 }
 
-static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
-                                   const char *output, ManoError *error) {
+static MilenaStatus run_sst_commands(const char *script, const Dataset *dataset,
+                                   const char *output, MilenaError *error) {
     char path[1200];
     int written = snprintf(path, sizeof(path), "%s.sst.json", output);
-    if (written < 0 || (size_t)written >= sizeof(path)) return MANO_ERR_OVERFLOW;
+    if (written < 0 || (size_t)written >= sizeof(path)) return MILENA_ERR_OVERFLOW;
     FILE *report = fopen(path, "wb");
-    if (!report) return MANO_ERR_IO;
+    if (!report) return MILENA_ERR_IO;
     fprintf(report, "{\n  \"analisis\": \"sst_comandos\",\n  \"proposito\": \"apoyo_preventivo_sst\",\n  \"determina_causalidad\": false,\n  \"requiere_revision_profesional\": true,\n  \"operaciones\": [\n");
     bool first = true;
-    char *copy = mano_strdup(script);
-    if (!copy) { fclose(report); return MANO_ERR_MEMORY; }
+    char *copy = milena_strdup(script);
+    if (!copy) { fclose(report); return MILENA_ERR_MEMORY; }
     char *line = strtok(copy, "\n\r");
     while (line) {
         char *text = trim_left(line);
-        ManoStatus status = MANO_OK;
+        MilenaStatus status = MILENA_OK;
         if (strncmp(text, "#perfil_avanzado", 16) == 0 ||
             strncmp(text, "#perfil_numerico", 16) == 0) {
             char column[256];
-            if (!get_quoted(text, 0, column, sizeof(column))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, column, sizeof(column))) status = MILENA_ERR_PARSE;
             double *values = NULL; size_t count = 0;
-            if (status == MANO_OK) status = numeric_column(dataset, column, &values, &count, error);
+            if (status == MILENA_OK) status = numeric_column(dataset, column, &values, &count, error);
             SstAdvancedStats stats;
-            if (status == MANO_OK) status = sst_advanced_compute(values, NULL, count, &stats, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_advanced_compute(values, NULL, count, &stats, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fputs("    {\"operacion\": \"perfil_avanzado\", \"variable\": ", report);
                 json_text(report, column);
@@ -375,18 +376,18 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
             free(values);
         } else if (strncmp(text, "#histograma", 11) == 0) {
             char column[256];
-            if (!get_quoted(text, 0, column, sizeof(column))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, column, sizeof(column))) status = MILENA_ERR_PARSE;
             size_t bins = 5;
             const char *bp = strstr(text, "bins");
             if (bp) { const char *eq = strchr(bp, '='); if (eq) bins = (size_t)strtoul(eq + 1, NULL, 10); }
             double *values = NULL; size_t count = 0;
-            if (status == MANO_OK) status = numeric_column(dataset, column, &values, &count, error);
+            if (status == MILENA_OK) status = numeric_column(dataset, column, &values, &count, error);
             SstAdvancedStats stats;
             SstHistogram histogram;
-            if (status == MANO_OK) status = sst_advanced_compute(values, NULL, count, &stats, error);
-            if (status == MANO_OK) status = sst_histogram_init(&histogram, bins, stats.minimum, stats.maximum, error);
-            if (status == MANO_OK) for (size_t i = 0; i < count; i++) (void)sst_histogram_add(&histogram, values[i], error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_advanced_compute(values, NULL, count, &stats, error);
+            if (status == MILENA_OK) status = sst_histogram_init(&histogram, bins, stats.minimum, stats.maximum, error);
+            if (status == MILENA_OK) for (size_t i = 0; i < count; i++) (void)sst_histogram_add(&histogram, values[i], error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fprintf(report, "    {\"operacion\": \"histograma\", \"variable\": "); json_text(report, column);
                 fprintf(report, ", \"bins\": [");
@@ -396,16 +397,16 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
                 }
                 fprintf(report, "], \"bajo_minimo\": %zu, \"sobre_maximo\": %zu}", histogram.underflow, histogram.overflow);
             }
-            if (status == MANO_OK) sst_histogram_destroy(&histogram);
+            if (status == MILENA_OK) sst_histogram_destroy(&histogram);
             free(values);
         } else if (strncmp(text, "#normalidad", 11) == 0) {
             char column[256];
-            if (!get_quoted(text, 0, column, sizeof(column))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, column, sizeof(column))) status = MILENA_ERR_PARSE;
             double *values = NULL; size_t count = 0;
-            if (status == MANO_OK) status = numeric_column(dataset, column, &values, &count, error);
+            if (status == MILENA_OK) status = numeric_column(dataset, column, &values, &count, error);
             SstNormalityResult normality;
-            if (status == MANO_OK) status = sst_normality_test(values, count, &normality, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_normality_test(values, count, &normality, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fputs("    {\"operacion\": \"normalidad\", \"variable\": ", report); json_text(report, column);
                 fprintf(report, ", \"metodo\": "); json_text(report, normality.method);
@@ -420,21 +421,21 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
         } else if (strncmp(text, "#poisson", 8) == 0) {
             char event_column[256], exposure_column[256];
             if (!get_quoted(text, 0, event_column, sizeof(event_column)) ||
-                !get_quoted(text, 1, exposure_column, sizeof(exposure_column))) status = MANO_ERR_PARSE;
+                !get_quoted(text, 1, exposure_column, sizeof(exposure_column))) status = MILENA_ERR_PARSE;
             double factor = 200000.0;
             const char *factor_text = strstr(text, "factor");
             if (factor_text) { const char *equal = strchr(factor_text, '='); if (equal) factor = strtod(equal + 1, NULL); }
             int event_index = dataset_column_index(dataset, event_column);
             int exposure_index = dataset_column_index(dataset, exposure_column);
             size_t incidents = 0; double exposure = 0.0;
-            if (status == MANO_OK && (event_index < 0 || exposure_index < 0)) status = MANO_ERR_DATA;
-            if (status == MANO_OK) for (size_t i = 0; i < dataset->row_count; i++) {
+            if (status == MILENA_OK && (event_index < 0 || exposure_index < 0)) status = MILENA_ERR_DATA;
+            if (status == MILENA_OK) for (size_t i = 0; i < dataset->row_count; i++) {
                 if (sst_binary_parse(dataset->rows[i][event_index]) == SST_BINARY_TRUE) incidents++;
-                double hours; if (mano_parse_double(dataset->rows[i][exposure_index], &hours) == MANO_OK && hours >= 0.0) exposure += hours;
+                double hours; if (milena_parse_double(dataset->rows[i][exposure_index], &hours) == MILENA_OK && hours >= 0.0) exposure += hours;
             }
             SstPoissonInterval interval;
-            if (status == MANO_OK) status = sst_poisson_exact_interval(incidents, exposure, factor, 0.95, &interval, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_poisson_exact_interval(incidents, exposure, factor, 0.95, &interval, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fputs("    {\"operacion\": \"poisson\", \"evento\": ", report); json_text(report, event_column);
                 fputs(", \"exposicion\": ", report); json_text(report, exposure_column);
@@ -444,7 +445,7 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
             char event_column[256], exposure_column[256];
             if (!get_quoted(text, 0, event_column, sizeof(event_column)) ||
                 !get_quoted(text, 1, exposure_column, sizeof(exposure_column))) {
-                status = MANO_ERR_PARSE;
+                status = MILENA_ERR_PARSE;
             }
             double factor = 200000.0;
             const char *factor_text = strstr(text, "factor");
@@ -455,18 +456,18 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
             int event_index = dataset_column_index(dataset, event_column);
             int exposure_index = dataset_column_index(dataset, exposure_column);
             size_t incidents = 0; double exposure = 0.0;
-            if (status == MANO_OK && (event_index < 0 || exposure_index < 0)) status = MANO_ERR_DATA;
-            if (status == MANO_OK) {
+            if (status == MILENA_OK && (event_index < 0 || exposure_index < 0)) status = MILENA_ERR_DATA;
+            if (status == MILENA_OK) {
                 for (size_t i = 0; i < dataset->row_count; i++) {
                     SstBinaryValue binary = sst_binary_parse(dataset->rows[i][event_index]);
                     if (binary == SST_BINARY_TRUE) incidents++;
                     double hours;
-                    if (mano_parse_double(dataset->rows[i][exposure_index], &hours) == MANO_OK && hours >= 0.0) exposure += hours;
+                    if (milena_parse_double(dataset->rows[i][exposure_index], &hours) == MILENA_OK && hours >= 0.0) exposure += hours;
                 }
             }
             SstRateResult rate;
-            if (status == MANO_OK) status = sst_rate_from_counts(incidents, exposure, factor, &rate, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_rate_from_counts(incidents, exposure, factor, &rate, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fputs("    {\"operacion\": \"tasa\", \"evento\": ", report); json_text(report, event_column);
                 fputs(", \"exposicion\": ", report); json_text(report, exposure_column);
@@ -474,12 +475,12 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
             }
         } else if (strncmp(text, "#correlacion", 12) == 0) {
             char left[256], right[256];
-            if (!get_quoted(text, 0, left, sizeof(left)) || !get_quoted(text, 1, right, sizeof(right))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, left, sizeof(left)) || !get_quoted(text, 1, right, sizeof(right))) status = MILENA_ERR_PARSE;
             double *x = NULL, *y = NULL; size_t count = 0;
-            if (status == MANO_OK) status = paired_columns(dataset, left, right, &x, &y, &count, error);
+            if (status == MILENA_OK) status = paired_columns(dataset, left, right, &x, &y, &count, error);
             SstCorrelationResult result;
-            if (status == MANO_OK) status = sst_pearson(x, y, count, &result, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_pearson(x, y, count, &result, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fprintf(report, "    {\"operacion\": \"pearson\", \"x\": "); json_text(report, left);
                 fprintf(report, ", \"y\": "); json_text(report, right);
@@ -488,33 +489,33 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
             free(x); free(y);
         } else if (strncmp(text, "#chi_cuadrado", 13) == 0) {
             char row_name[256], col_name[256];
-            if (!get_quoted(text, 0, row_name, sizeof(row_name)) || !get_quoted(text, 1, col_name, sizeof(col_name))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, row_name, sizeof(row_name)) || !get_quoted(text, 1, col_name, sizeof(col_name))) status = MILENA_ERR_PARSE;
             int ri = dataset_column_index(dataset, row_name), ci = dataset_column_index(dataset, col_name);
             const char **rows = NULL, **cols = NULL;
-            if (status == MANO_OK && (ri < 0 || ci < 0)) status = MANO_ERR_DATA;
-            if (status == MANO_OK) {
+            if (status == MILENA_OK && (ri < 0 || ci < 0)) status = MILENA_ERR_DATA;
+            if (status == MILENA_OK) {
                 rows = (const char **)calloc(dataset->row_count, sizeof(*rows));
                 cols = (const char **)calloc(dataset->row_count, sizeof(*cols));
-                if (!rows || !cols) status = MANO_ERR_MEMORY;
+                if (!rows || !cols) status = MILENA_ERR_MEMORY;
             }
-            if (status == MANO_OK) for (size_t i = 0; i < dataset->row_count; i++) { rows[i] = dataset->rows[i][ri]; cols[i] = dataset->rows[i][ci]; }
+            if (status == MILENA_OK) for (size_t i = 0; i < dataset->row_count; i++) { rows[i] = dataset->rows[i][ri]; cols[i] = dataset->rows[i][ci]; }
             SstContingency2D table; sst_contingency_init(&table); SstChiSquareResult chi;
-            if (status == MANO_OK) status = sst_contingency_build(rows, cols, dataset->row_count, &table, error);
-            if (status == MANO_OK) status = sst_contingency_chi_square(&table, &chi, error);
-            if (status == MANO_OK) {
+            if (status == MILENA_OK) status = sst_contingency_build(rows, cols, dataset->row_count, &table, error);
+            if (status == MILENA_OK) status = sst_contingency_chi_square(&table, &chi, error);
+            if (status == MILENA_OK) {
                 if (!first) fputs(",\n", report); first = false;
                 fprintf(report, "    {\"operacion\": \"chi_cuadrado\", \"filas\": %zu, \"columnas\": %zu, \"estadistico\": %.10g, \"grados_libertad\": %zu, \"p_aproximado\": %.10g, \"celdas_esperadas_bajas\": %zu}", table.row_count, table.column_count, chi.statistic, chi.degrees_of_freedom, sst_chi_square_approx_pvalue(chi.statistic, chi.degrees_of_freedom), chi.low_expected_cells);
             }
             sst_contingency_destroy(&table); free(rows); free(cols);
         } else if (strncmp(text, "#balance", 8) == 0) {
             char column[256];
-            if (!get_quoted(text, 0, column, sizeof(column))) status = MANO_ERR_PARSE;
+            if (!get_quoted(text, 0, column, sizeof(column))) status = MILENA_ERR_PARSE;
             int index = dataset_column_index(dataset, column); size_t zeros = 0, ones = 0, invalid = 0;
-            if (status == MANO_OK && index < 0) status = MANO_ERR_DATA;
-            if (status == MANO_OK) for (size_t i = 0; i < dataset->row_count; i++) { SstBinaryValue v = sst_binary_parse(dataset->rows[i][index]); if (v == SST_BINARY_TRUE) ones++; else if (v == SST_BINARY_FALSE) zeros++; else invalid++; }
-            if (status == MANO_OK) { if (!first) fputs(",\n", report); first = false; fprintf(report, "    {\"operacion\": \"balance\", \"variable\": "); json_text(report, column); fprintf(report, ", \"ceros\": %zu, \"unos\": %zu, \"invalidos\": %zu}", zeros, ones, invalid); }
+            if (status == MILENA_OK && index < 0) status = MILENA_ERR_DATA;
+            if (status == MILENA_OK) for (size_t i = 0; i < dataset->row_count; i++) { SstBinaryValue v = sst_binary_parse(dataset->rows[i][index]); if (v == SST_BINARY_TRUE) ones++; else if (v == SST_BINARY_FALSE) zeros++; else invalid++; }
+            if (status == MILENA_OK) { if (!first) fputs(",\n", report); first = false; fprintf(report, "    {\"operacion\": \"balance\", \"variable\": "); json_text(report, column); fprintf(report, ", \"ceros\": %zu, \"unos\": %zu, \"invalidos\": %zu}", zeros, ones, invalid); }
         }
-        if (status != MANO_OK) { free(copy); fclose(report); return status; }
+        if (status != MILENA_OK) { free(copy); fclose(report); return status; }
         line = strtok(NULL, "\n\r");
     }
     free(copy);
@@ -526,19 +527,517 @@ static ManoStatus run_sst_commands(const char *script, const Dataset *dataset,
     json_text(report, "Los métodos inferenciales aproximados deben interpretarse junto con sus supuestos y tamaño muestral.");
     fputs("}\n  ]\n}\n", report);
     bool io_error = ferror(report) != 0; if (fclose(report) != 0) io_error = true;
-    if (io_error) return MANO_ERR_IO;
+    if (io_error) return MILENA_ERR_IO;
     printf("Reporte SST avanzado: %s\n", path);
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus mano_run_script(const char *filename, ManoError *error) {
-    if (!filename) return MANO_ERR_ARGUMENT;
+
+typedef struct {
+    char name[128];
+    MilenaArray array;
+} ScriptArrayBinding;
+
+static ScriptArrayBinding *find_script_array(ScriptArrayBinding *bindings,
+                                             size_t count, const char *name) {
+    for (size_t i = 0; i < count; i++) {
+        if (strcmp(bindings[i].name, name) == 0) return &bindings[i];
+    }
+    return NULL;
+}
+
+static MilenaStatus script_scalar_operation(MilenaArray *out,
+                                             const MilenaArray *source,
+                                             char operation, double scalar,
+                                             MilenaError *error) {
+    if (!out || !source || (operation != '+' && operation != '-' &&
+                            operation != '*' && operation != '/')) {
+        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0,
+                         "Operación escalar de array inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (operation == '/' && scalar == 0.0) {
+        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0,
+                         "División de array por cero");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t *shape = source->ndim ? (size_t *)malloc(source->ndim * sizeof(size_t)) : NULL;
+    if (source->ndim && !shape) {
+        milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0, "Sin memoria para shape");
+        return MILENA_ERR_MEMORY;
+    }
+    if (source->ndim) memcpy(shape, source->shape, source->ndim * sizeof(size_t));
+    bool integer_result = source->dtype == MILENA_DTYPE_INT64 &&
+                          operation != '/' && scalar == (double)(int64_t)scalar;
+    MilenaStatus status;
+    if (integer_result) {
+        int64_t *values = (int64_t *)malloc(source->size * sizeof(int64_t));
+        if (!values) { free(shape); return MILENA_ERR_MEMORY; }
+        const int64_t *input = (const int64_t *)milena_array_const_data(source);
+        int64_t value = (int64_t)scalar;
+        for (size_t i = 0; i < source->size; i++) {
+            if (operation == '+') values[i] = input[i] + value;
+            else if (operation == '-') values[i] = input[i] - value;
+            else values[i] = input[i] * value;
+        }
+        status = milena_array_from_i64(out, source->ndim, shape, values, error);
+        free(values);
+    } else {
+        double *values = (double *)malloc(source->size * sizeof(double));
+        if (!values) { free(shape); return MILENA_ERR_MEMORY; }
+        for (size_t i = 0; i < source->size; i++) {
+            double input = source->dtype == MILENA_DTYPE_FLOAT64 ?
+                ((const double *)milena_array_const_data(source))[i] :
+                (double)((const int64_t *)milena_array_const_data(source))[i];
+            if (operation == '+') values[i] = input + scalar;
+            else if (operation == '-') values[i] = input - scalar;
+            else if (operation == '*') values[i] = input * scalar;
+            else values[i] = input / scalar;
+        }
+        status = milena_array_from_f64(out, source->ndim, shape, values, error);
+        free(values);
+    }
+    free(shape);
+    return status;
+}
+
+static void print_array_operation(const char *left, char operation,
+                                  const char *right, const MilenaArray *result) {
+    printf("Operacion %s %c %s: dtype=%s, shape=(", left, operation, right,
+           milena_dtype_name(result->dtype));
+    for (size_t i = 0; i < result->ndim; i++) {
+        if (i) printf(", ");
+        printf("%zu", result->shape[i]);
+    }
+    printf(")\n");
+}
+
+static MilenaStatus run_array_declarations(const char *script, MilenaError *error) {
+    const char *cursor = script;
+    size_t declarations = 0;
+    ScriptArrayBinding *bindings = NULL;
+    size_t binding_count = 0;
+    while (true) {
+        const char *english_keyword = strstr(cursor, "array");
+        const char *spanish_keyword = strstr(cursor, "arreglo");
+        if (!english_keyword && !spanish_keyword) break;
+        const char *keyword = !english_keyword ? spanish_keyword :
+            !spanish_keyword ? english_keyword :
+            english_keyword < spanish_keyword ? english_keyword : spanish_keyword;
+        size_t keyword_length = keyword == spanish_keyword ? 7 : 5;
+        cursor = keyword;
+        const char *name_start = cursor + keyword_length;
+        if (*name_start && !isspace((unsigned char)*name_start)) {
+            cursor = name_start;
+            continue;
+        }
+        while (isspace((unsigned char)*name_start)) name_start++;
+        const char *name_end = name_start;
+        while (isalnum((unsigned char)*name_end) || *name_end == '_') name_end++;
+        if (name_end == name_start) {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Se esperaba nombre después de array");
+            return MILENA_ERR_PARSE;
+        }
+        char name[128];
+        size_t name_length = (size_t)(name_end - name_start);
+        if (name_length >= sizeof(name)) {
+            milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
+                             "Nombre de array demasiado largo");
+            return MILENA_ERR_OVERFLOW;
+        }
+        memcpy(name, name_start, name_length);
+        name[name_length] = '\0';
+        const char *equal = name_end;
+        while (isspace((unsigned char)*equal)) equal++;
+        if (*equal != '=') {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Se esperaba '=' en la declaración del array");
+            return MILENA_ERR_PARSE;
+        }
+        const char *expression = equal + 1;
+        while (isspace((unsigned char)*expression)) expression++;
+        bool zeros = strncmp(expression, "zeros", 5) == 0 ||
+                     strncmp(expression, "ceros", 5) == 0;
+        const char *start = NULL;
+        const char *end = NULL;
+        if (zeros) {
+            start = strchr(expression, '(');
+            end = start ? strchr(start + 1, ')') : NULL;
+        } else {
+            start = strchr(expression, '[');
+            end = start ? strchr(start + 1, ']') : NULL;
+        }
+        if (!start || !end || end <= start + 1) {
+            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                             "Literal de array vacío o sin cierre");
+            return MILENA_ERR_PARSE;
+        }
+        size_t count = 0;
+        size_t ndim = 1;
+        size_t shape[8] = {0};
+        if (zeros) {
+            const char *scan = start + 1;
+            ndim = 0;
+            count = 1;
+            while (scan < end) {
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                char *number_end = NULL;
+                unsigned long parsed = strtoul(scan, &number_end, 10);
+                if (ndim >= 8 || number_end == scan || parsed == 0 || parsed > SIZE_MAX) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "zeros requiere dimensiones positivas");
+                    return MILENA_ERR_PARSE;
+                }
+                shape[ndim++] = (size_t)parsed;
+                if (!milena_size_mul(count, (size_t)parsed, &count)) {
+                    milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
+                                     "El tamaño de zeros desborda size_t");
+                    return MILENA_ERR_OVERFLOW;
+                }
+                scan = number_end;
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                if (scan < end && *scan != ',') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Se esperaba ',' entre dimensiones");
+                    return MILENA_ERR_PARSE;
+                }
+                if (scan < end) scan++;
+            }
+        } else {
+            const char *scan = start + 1;
+            while (scan < end) {
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                char *number_end = NULL;
+                (void)strtod(scan, &number_end);
+                if (number_end == scan || number_end > end) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "El array solo admite números");
+                    return MILENA_ERR_PARSE;
+                }
+                count++;
+                scan = number_end;
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                if (scan < end && *scan != ',') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Se esperaba ',' entre elementos");
+                    return MILENA_ERR_PARSE;
+                }
+                if (scan < end) scan++;
+            }
+        }
+        if (!zeros) shape[0] = count;
+        MilenaArray array = {0};
+        MilenaStatus status;
+        if (zeros) {
+            status = milena_array_zeros(&array, MILENA_DTYPE_FLOAT64, ndim,
+                                        shape, error);
+        } else {
+            double *values = (double *)malloc(count * sizeof(double));
+            int64_t *integers = (int64_t *)malloc(count * sizeof(int64_t));
+            if (!values || !integers) {
+                free(values); free(integers);
+                milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0,
+                                 "No se pudo reservar el literal del array");
+                return MILENA_ERR_MEMORY;
+            }
+            bool all_integers = true;
+            const char *scan = start + 1;
+            for (size_t i = 0; i < count; i++) {
+                char *number_end = NULL;
+                values[i] = strtod(scan, &number_end);
+                integers[i] = (int64_t)values[i];
+                if (values[i] != (double)integers[i]) all_integers = false;
+                scan = number_end;
+                while (isspace((unsigned char)*scan) || *scan == ',') scan++;
+            }
+            if (all_integers) {
+                status = milena_array_from_i64(&array, 1, shape, integers, error);
+            } else {
+                status = milena_array_from_f64(&array, 1, shape, values, error);
+            }
+            free(values); free(integers);
+        }
+        if (status != MILENA_OK) return status;
+        printf("Array %s: dtype=%s, shape=", name, milena_dtype_name(array.dtype));
+        printf("(");
+        for (size_t axis = 0; axis < array.ndim; axis++) {
+            if (axis) printf(", ");
+            printf("%zu", array.shape[axis]);
+        }
+        printf("), size=%zu\n", array.size);
+        ScriptArrayBinding *grown = (ScriptArrayBinding *)realloc(
+            bindings, (binding_count + 1) * sizeof(*bindings));
+        if (!grown) {
+            milena_array_release(&array);
+            for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+            free(bindings);
+            milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0,
+                             "No se pudo registrar el array");
+            return MILENA_ERR_MEMORY;
+        }
+        bindings = grown;
+        strcpy(bindings[binding_count].name, name);
+        bindings[binding_count].array = array;
+        memset(&array, 0, sizeof(array));
+        binding_count++;
+        declarations++;
+        cursor = end + 1;
+    }
+    if (declarations == 0) {
+        free(bindings);
+        milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                         "No se encontró una declaración de array");
+        return MILENA_ERR_PARSE;
+    }
+
+    const char *operations[] = {"shape(", "ndim(", "size(", "sum(", "mean(", "min(", "max(", "variance(", "std(", "median(", "percentile(",
+        "forma(", "dimensiones(", "tamaño(", "suma(", "media(", "minimo(", "maximo(", "varianza(", "desviacion_estandar(", "mediana(", "percentil("};
+    for (size_t operation = 0; operation < 22; operation++) {
+        size_t canonical_operation = operation >= 11 ? operation - 11 : operation;
+        const char *display_operation = operations[operation];
+        size_t display_length = strlen(display_operation) - 1;
+        const char *position = script;
+        while ((position = strstr(position, operations[operation])) != NULL) {
+            position += strlen(operations[operation]);
+            const char *name_end = strchr(position, ')');
+            if (!name_end || name_end == position || (size_t)(name_end - position) >= 128) {
+                milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                 "Argumento inválido en operación de array");
+                goto array_cleanup_error;
+            }
+            char name[128];
+            double requested_percentile = 50.0;
+            int requested_axis = -1;
+            bool requested_keepdims = false;
+            size_t length = (size_t)(name_end - position);
+            memcpy(name, position, length);
+            name[length] = '\0';
+            if (canonical_operation == 10) {
+                char *comma = strchr(name, ',');
+                if (!comma) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "percentile requiere array y porcentaje");
+                    goto array_cleanup_error;
+                }
+                *comma++ = '\0';
+                while (isspace((unsigned char)*comma)) comma++;
+                char *percentile_end = NULL;
+                requested_percentile = strtod(comma, &percentile_end);
+                while (percentile_end && isspace((unsigned char)*percentile_end)) percentile_end++;
+                if (!percentile_end || percentile_end == comma || *percentile_end != '\0') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Porcentaje inválido");
+                    goto array_cleanup_error;
+                }
+            } else if (canonical_operation >= 3 && canonical_operation <= 8) {
+                char *comma = strchr(name, ',');
+                if (comma) {
+                    *comma++ = '\0';
+                    while (isspace((unsigned char)*comma)) comma++;
+                    if (strncmp(comma, "eje", 3) == 0 &&
+                        isspace((unsigned char)comma[3])) {
+                        comma += 3;
+                        while (isspace((unsigned char)*comma)) comma++;
+                    }
+                    char *axis_end = NULL;
+                    long parsed_axis = strtol(comma, &axis_end, 10);
+                    while (axis_end && isspace((unsigned char)*axis_end)) axis_end++;
+                    if (axis_end && *axis_end == ',') {
+                        char *keepdims_text = axis_end + 1;
+                        while (isspace((unsigned char)*keepdims_text)) keepdims_text++;
+                        if (strcmp(keepdims_text, "true") == 0 ||
+                            strcmp(keepdims_text, "conservar dimensiones") == 0)
+                            requested_keepdims = true;
+                        else if (strcmp(keepdims_text, "false") == 0 ||
+                                 strcmp(keepdims_text, "sin conservar dimensiones") == 0)
+                            requested_keepdims = false;
+                        else {
+                            milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                             "keepdims debe ser true o false");
+                            goto array_cleanup_error;
+                        }
+                        axis_end = keepdims_text + strlen(keepdims_text);
+                    }
+                    while (axis_end && isspace((unsigned char)*axis_end)) axis_end++;
+                    if (!axis_end || axis_end == comma || *axis_end != '\0' ||
+                        parsed_axis < -1 || parsed_axis > INT_MAX) {
+                        milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                         "Eje inválido");
+                        goto array_cleanup_error;
+                    }
+                    requested_axis = (int)parsed_axis;
+                }
+            }
+            ScriptArrayBinding *binding = find_script_array(bindings, binding_count, name);
+            if (!binding) {
+                milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
+                                 "Variable de array inexistente");
+                goto array_cleanup_error;
+            }
+            if (canonical_operation == 0) {
+                printf("%.*s(%s) = (", (int)display_length, display_operation, name);
+                for (size_t axis = 0; axis < binding->array.ndim; axis++) {
+                    if (axis) printf(", ");
+                    printf("%zu", binding->array.shape[axis]);
+                }
+                printf(")\n");
+            } else if (canonical_operation == 1) {
+                printf("%.*s(%s) = %zu\n", (int)display_length, display_operation, name, binding->array.ndim);
+            } else if (canonical_operation == 2) {
+                printf("%.*s(%s) = %zu\n", (int)display_length, display_operation, name, binding->array.size);
+            } else if (canonical_operation == 9 || canonical_operation == 10) {
+                MilenaArray result = {0};
+                MilenaStatus order_status;
+                if (requested_axis >= 0)
+                    order_status = canonical_operation == 9 ?
+                        milena_array_median_axis(&result, &binding->array, requested_axis, requested_keepdims, error) :
+                        milena_array_percentile_axis(&result, &binding->array, requested_percentile, requested_axis, requested_keepdims, error);
+                else
+                    order_status = canonical_operation == 9 ?
+                        milena_array_median(&result, &binding->array, error) :
+                        milena_array_percentile(&result, &binding->array, requested_percentile, error);
+                if (order_status != MILENA_OK) goto array_cleanup_error;
+                printf("%.*s(%s", (int)display_length, display_operation, name);
+                if (canonical_operation == 10) printf(", %.17g", requested_percentile);
+                printf(") = ");
+                const double *ordered = milena_array_const_data(&result);
+                if (result.size == 1) printf("%.17g\n", ordered[0]);
+                else {
+                    printf("[");
+                    for (size_t i = 0; i < result.size; i++) printf("%s%.17g", i ? ", " : "", ordered[i]);
+                    printf("] shape=(");
+                    for (size_t i = 0; i < result.ndim; i++) printf("%s%zu", i ? ", " : "", result.shape[i]);
+                    printf(")\n");
+                }
+                milena_array_release(&result);
+            } else {
+                MilenaArray result = {0};
+                MilenaStatus stat_status;
+                if (canonical_operation == 3) stat_status = milena_array_sum(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 4 && requested_axis >= 0) stat_status = milena_array_mean_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 5 && requested_axis >= 0) stat_status = milena_array_min_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 6 && requested_axis >= 0) stat_status = milena_array_max_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 7 && requested_axis >= 0) stat_status = milena_array_variance_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 8 && requested_axis >= 0) stat_status = milena_array_std_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (canonical_operation == 4) stat_status = milena_array_mean(&result, &binding->array, error);
+                else if (canonical_operation == 5) stat_status = milena_array_min(&result, &binding->array, error);
+                else if (canonical_operation == 6) stat_status = milena_array_max(&result, &binding->array, error);
+                else if (canonical_operation == 7) stat_status = milena_array_variance(&result, &binding->array, error);
+                else stat_status = milena_array_std(&result, &binding->array, error);
+                if (stat_status != MILENA_OK) goto array_cleanup_error;
+                const char *label = canonical_operation == 3 ? (operation >= 11 ? "suma" : "sum") :
+                    canonical_operation == 4 ? (operation >= 11 ? "media" : "mean") :
+                    canonical_operation == 5 ? (operation >= 11 ? "minimo" : "min") :
+                    canonical_operation == 6 ? (operation >= 11 ? "maximo" : "max") :
+                    canonical_operation == 7 ? (operation >= 11 ? "varianza" : "variance") :
+                    (operation >= 11 ? "desviacion_estandar" : "std");
+                if (canonical_operation == 3 && result.dtype == MILENA_DTYPE_INT64)
+                    printf("%s(%s) = %lld\n", label, name,
+                           (long long)*(const int64_t *)milena_array_const_data(&result));
+                else if (result.size == 1)
+                    printf("%s(%s) = %.17g\n", label, name,
+                           *(const double *)milena_array_const_data(&result));
+                else {
+                    const double *data = (const double *)milena_array_const_data(&result);
+                    printf("%s(%s) = [", label, name);
+                    for (size_t i = 0; i < result.size; i++) {
+                        if (i) printf(", ");
+                        printf("%.17g", data[i]);
+                    }
+                    printf("] shape=(");
+                    for (size_t i = 0; i < result.ndim; i++) {
+                        if (i) printf(", ");
+                        printf("%zu", result.shape[i]);
+                    }
+                    printf(")\n");
+                }
+                milena_array_release(&result);
+            }
+            position = name_end + 1;
+        }
+    }
+    char *operation_script = milena_strdup(script);
+    if (!operation_script) {
+        milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0, "Sin memoria para operaciones");
+        goto array_cleanup_error;
+    }
+    char *line = strtok(operation_script, "\n\r");
+    while (line) {
+        char left[128] = {0}, right[128] = {0}, operation = '\0';
+        if (sscanf(line, " %127s %c %127s", left, &operation, right) == 3 &&
+            (operation == '+' || operation == '-' || operation == '*' || operation == '/')) {
+            size_t right_length = strlen(right);
+            if (right_length && right[right_length - 1] == ';') right[right_length - 1] = '\0';
+            char *right_trim = right;
+            ScriptArrayBinding *left_binding = find_script_array(bindings, binding_count, left);
+            if (left_binding) {
+                ScriptArrayBinding *right_binding = find_script_array(bindings, binding_count, right_trim);
+                MilenaArray result = {0};
+                MilenaStatus operation_status;
+                if (right_binding) {
+                    if (operation == '+') operation_status = milena_array_add(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else if (operation == '-') operation_status = milena_array_subtract(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else if (operation == '*') operation_status = milena_array_multiply(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else operation_status = milena_array_divide(
+                        &result, &left_binding->array, &right_binding->array, error);
+                } else {
+                    char *number_end = NULL;
+                    double scalar = strtod(right_trim, &number_end);
+                    while (number_end && isspace((unsigned char)*number_end)) number_end++;
+                    if (!number_end || number_end == right_trim || *number_end != '\0') {
+                        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
+                                         "Operando de array inexistente o inválido");
+                        free(operation_script);
+                        goto array_cleanup_error;
+                    }
+                    operation_status = script_scalar_operation(&result, &left_binding->array,
+                                                               operation, scalar, error);
+                }
+                if (operation_status != MILENA_OK) {
+                    free(operation_script);
+                    goto array_cleanup_error;
+                }
+                print_array_operation(left, operation, right_trim, &result);
+                milena_array_release(&result);
+            }
+        }
+        line = strtok(NULL, "\n\r");
+    }
+    free(operation_script);
+    for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+    free(bindings);
+    return MILENA_OK;
+
+array_cleanup_error:
+    for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+    free(bindings);
+    return error && error->code ? error->code : MILENA_ERR_INTERNAL;
+}
+
+MilenaStatus milena_run_script(const char *filename, MilenaError *error) {
+    if (!filename) return MILENA_ERR_ARGUMENT;
     char *script = read_file(filename, error);
-    if (!script) return error && error->code ? error->code : MANO_ERR_IO;
-    ManoSchema schema; schema_init(&schema);
-    ManoStatus status = parse_schema(script, &schema, error);
-    if (status == MANO_OK) status = validate_commands(script, error);
-    if (status != MANO_OK) { free(script); schema_destroy(&schema); return status; }
+    if (!script) return error && error->code ? error->code : MILENA_ERR_IO;
+    if ((strstr(script, "array") != NULL || strstr(script, "arreglo") != NULL) &&
+        strstr(script, "dataset cargar") == NULL) {
+        MilenaStatus array_status = run_array_declarations(script, error);
+        free(script);
+        return array_status;
+    }
+    MilenaSchema schema; schema_init(&schema);
+    MilenaStatus status = parse_schema(script, &schema, error);
+    if (status == MILENA_OK) status = validate_commands(script, error);
+    if (status != MILENA_OK) { free(script); schema_destroy(&schema); return status; }
 
     char input[1024] = {0};
     char resolved_input[2048] = {0};
@@ -546,25 +1045,25 @@ ManoStatus mano_run_script(const char *filename, ManoError *error) {
     char output[1024] = "reporte_dataset.json";
     char resolved_output[2048] = {0};
     if (!find_quoted_after(script, "dataset cargar", input, sizeof(input))) {
-        free(script); schema_destroy(&schema); mano_error_set(error, MANO_ERR_PARSE, 0, 0, 0, "Falta dataset cargar datos(\"...\")"); return MANO_ERR_PARSE;
+        free(script); schema_destroy(&schema); milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0, "Falta dataset cargar datos(\"...\")"); return MILENA_ERR_PARSE;
     }
     status = resolve_input_path(filename, input, resolved_input, sizeof(resolved_input),
                                 resource_base, sizeof(resource_base), error);
     const char *export_pos = strstr(script, ".exportar");
-    if (status == MANO_OK && export_pos && !find_quoted_after(export_pos, ".exportar", output, sizeof(output))) status = MANO_ERR_PARSE;
-    if (status == MANO_OK) status = resolve_output_path(output, resource_base, resolved_output, sizeof(resolved_output));
-    if (has_text(script, "#total(\"precio * cantidad\")") && schema_index(&schema, "total") < 0) status = schema_add(&schema, "total", MANO_VAR_NUMERIC, MANO_ROLE_FEATURE, error);
-    if (status == MANO_OK && has_text(script, "#periodo extraer(\"mes de fecha\")") && schema_index(&schema, "periodo") < 0) status = schema_add(&schema, "periodo", MANO_VAR_CATEGORICAL, MANO_ROLE_FEATURE, error);
+    if (status == MILENA_OK && export_pos && !find_quoted_after(export_pos, ".exportar", output, sizeof(output))) status = MILENA_ERR_PARSE;
+    if (status == MILENA_OK) status = resolve_output_path(output, resource_base, resolved_output, sizeof(resolved_output));
+    if (has_text(script, "#total(\"precio * cantidad\")") && schema_index(&schema, "total") < 0) status = schema_add(&schema, "total", MILENA_VAR_NUMERIC, MILENA_ROLE_FEATURE, error);
+    if (status == MILENA_OK && has_text(script, "#periodo extraer(\"mes de fecha\")") && schema_index(&schema, "periodo") < 0) status = schema_add(&schema, "periodo", MILENA_VAR_CATEGORICAL, MILENA_ROLE_FEATURE, error);
 
     Dataset dataset; dataset_init(&dataset); DatasetLimits limits = dataset_default_limits();
-    if (status == MANO_OK) status = dataset_load_csv_with_limits(&dataset, resolved_input, ',', &limits, error);
-    if (status == MANO_OK && has_text(script, "#nulos(\"eliminar\")")) status = dataset_remove_null_rows(&dataset, error);
-    if (status == MANO_OK && has_text(script, "#duplicados(\"eliminar\")")) status = dataset_remove_duplicates(&dataset, error);
-    if (status == MANO_OK && has_text(script, "#total(\"precio * cantidad\")")) status = dataset_add_product(&dataset, "precio", "cantidad", "total", error);
-    if (status == MANO_OK && has_text(script, "#periodo extraer(\"mes de fecha\")")) status = dataset_add_month(&dataset, "fecha", "periodo", error);
-    if (status == MANO_OK && has_text(script, "#condicion(\"total > 0\")")) status = dataset_filter_positive_product(&dataset, "precio", "cantidad", error);
-    if (status == MANO_OK) status = analysis_dataset_report(&dataset, &schema, resolved_output, error);
-    if (status == MANO_OK) status = run_sst_commands(script, &dataset, resolved_output, error);
-    if (status == MANO_OK) { printf("Script ejecutado correctamente: %s\n", filename); printf("Filas: %zu | Columnas: %zu | Filas inválidas: %zu\n", dataset.row_count, dataset.column_count, dataset.invalid_rows); }
+    if (status == MILENA_OK) status = dataset_load_csv_with_limits(&dataset, resolved_input, ',', &limits, error);
+    if (status == MILENA_OK && has_text(script, "#nulos(\"eliminar\")")) status = dataset_remove_null_rows(&dataset, error);
+    if (status == MILENA_OK && has_text(script, "#duplicados(\"eliminar\")")) status = dataset_remove_duplicates(&dataset, error);
+    if (status == MILENA_OK && has_text(script, "#total(\"precio * cantidad\")")) status = dataset_add_product(&dataset, "precio", "cantidad", "total", error);
+    if (status == MILENA_OK && has_text(script, "#periodo extraer(\"mes de fecha\")")) status = dataset_add_month(&dataset, "fecha", "periodo", error);
+    if (status == MILENA_OK && has_text(script, "#condicion(\"total > 0\")")) status = dataset_filter_positive_product(&dataset, "precio", "cantidad", error);
+    if (status == MILENA_OK) status = analysis_dataset_report(&dataset, &schema, resolved_output, error);
+    if (status == MILENA_OK) status = run_sst_commands(script, &dataset, resolved_output, error);
+    if (status == MILENA_OK) { printf("Script ejecutado correctamente: %s\n", filename); printf("Filas: %zu | Columnas: %zu | Filas inválidas: %zu\n", dataset.row_count, dataset.column_count, dataset.invalid_rows); }
     dataset_destroy(&dataset); schema_destroy(&schema); free(script); return status;
 }

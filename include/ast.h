@@ -1,5 +1,5 @@
-#ifndef MANO_AST_H
-#define MANO_AST_H
+#ifndef MILENA_AST_H
+#define MILENA_AST_H
 
 #include "common.h"
 #include "token.h"
@@ -22,6 +22,8 @@ typedef enum {
     AST_EXPRESION_LITERAL,
     AST_EXPRESION_IDENTIFICADOR,
     AST_EXPRESION_FUNCION,
+    AST_EXPRESION_ARRAY,
+    AST_DECLARACION_ARRAY,
     AST_COMANDO_NULOS,
     AST_COMANDO_DUPLICADOS,
     AST_COMANDO_CONDICION,

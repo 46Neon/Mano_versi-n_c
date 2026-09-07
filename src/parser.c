@@ -5,11 +5,11 @@ void parser_init(Parser *parser, Lexer *lexer) {
     parser->current = lexer_next_token(lexer);
     parser->previous = parser->current;
     parser->has_error = false;
-    mano_error_init(&parser->error);
+    milena_error_init(&parser->error);
 }
 
 void parser_error(Parser *parser, const char *msg) {
-    mano_error_set(&parser->error, MANO_ERROR_SYNTAX, msg,
+    milena_error_set(&parser->error, MILENA_ERROR_SYNTAX, msg,
                   parser->current.line, parser->current.column);
     parser->has_error = true;
 }
@@ -32,6 +32,72 @@ bool parser_expect(Parser *parser, TokenType type, const char *msg) {
     return true;
 }
 
+static ASTNode *parse_array_declaration(Parser *parser) {
+    if (!parser || !parser_match(parser, TOKEN_IDENTIFICADOR) ||
+        strcmp(parser->current.lexeme, "array") != 0) return NULL;
+    parser_advance(parser);
+
+    if (!parser_expect(parser, TOKEN_IDENTIFICADOR,
+                       "Se esperaba nombre del array")) return NULL;
+    char name[MAX_TOKEN_LEN];
+    strncpy(name, parser->previous.lexeme, sizeof(name) - 1);
+    name[sizeof(name) - 1] = '\0';
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración del array") ||
+        !parser_expect(parser, TOKEN_CORCHETE_IZQ, "Se esperaba '[' en el literal del array")) {
+        return NULL;
+    }
+    if (parser_match(parser, TOKEN_CORCHETE_DER)) {
+        parser_error(parser, "Un literal de array no puede estar vacío");
+        return NULL;
+    }
+
+    ASTNode *array = ast_create(AST_EXPRESION_ARRAY);
+    if (!array) {
+        parser_error(parser, "No se pudo crear el literal del array");
+        return NULL;
+    }
+    while (true) {
+        if (!parser_expect(parser, TOKEN_NUMERO,
+                           "El literal de array solo admite números")) {
+            ast_destroy(array);
+            return NULL;
+        }
+        ASTNode *number = ast_create_number(parser->previous.number_value);
+        if (!number) {
+            ast_destroy(array);
+            parser_error(parser, "No se pudo crear un elemento del array");
+            return NULL;
+        }
+        ast_add_child(array, number);
+        if (parser_match(parser, TOKEN_CORCHETE_DER)) break;
+        if (!parser_expect(parser, TOKEN_COMA,
+                           "Se esperaba ',' entre elementos del array")) {
+            ast_destroy(array);
+            return NULL;
+        }
+        if (parser_match(parser, TOKEN_CORCHETE_DER)) {
+            ast_destroy(array);
+            parser_error(parser, "No se admite coma final en el array");
+            return NULL;
+        }
+    }
+    parser_advance(parser);
+    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA,
+                       "Se esperaba ';' después del array")) {
+        ast_destroy(array);
+        return NULL;
+    }
+
+    ASTNode *declaration = ast_create_leaf(AST_DECLARACION_ARRAY, name);
+    if (!declaration) {
+        ast_destroy(array);
+        parser_error(parser, "No se pudo crear la declaración del array");
+        return NULL;
+    }
+    ast_add_child(declaration, array);
+    return declaration;
+}
+
 static ASTNode* parse_bloque_analisis(Parser *parser) {
     if (!parser_expect(parser, TOKEN_PUNTO, "Se esperaba '.'")) return NULL;
     if (!parser_expect(parser, TOKEN_KW_ANALISIS, "Se esperaba 'analisis'")) return NULL;
@@ -47,7 +113,11 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
     
     // Parsear contenido del bloque
     while (!parser_match(parser, TOKEN_LLAVE_DER) && !parser_match(parser, TOKEN_EOF)) {
-        if (parser_match(parser, TOKEN_NUMERAL)) {
+        if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+            strcmp(parser->current.lexeme, "array") == 0) {
+            ASTNode *declaration = parse_array_declaration(parser);
+            if (declaration) ast_add_child(node, declaration);
+        } else if (parser_match(parser, TOKEN_NUMERAL)) {
             parser_advance(parser);
             if (parser_match(parser, TOKEN_KW_DATOS)) {
                 parser_advance(parser);

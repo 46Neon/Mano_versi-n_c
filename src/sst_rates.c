@@ -1,14 +1,14 @@
 #include "sst_rates.h"
 
-ManoStatus sst_rate_from_counts(size_t incidents, double exposure_hours,
+MilenaStatus sst_rate_from_counts(size_t incidents, double exposure_hours,
                                 double factor, SstRateResult *result,
-                                ManoError *error) {
+                                MilenaError *error) {
     if (!result || !isfinite(exposure_hours) || !isfinite(factor) ||
         exposure_hours <= 0.0 || factor <= 0.0) {
         if (result) memset(result, 0, sizeof(*result));
-        mano_error_set(error, MANO_ERR_DATA, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
                        "Exposición o factor de tasa inválido");
-        return MANO_ERR_DATA;
+        return MILENA_ERR_DATA;
     }
     memset(result, 0, sizeof(*result));
     result->incident_count = incidents;
@@ -17,16 +17,16 @@ ManoStatus sst_rate_from_counts(size_t incidents, double exposure_hours,
     result->rate = (double)incidents / exposure_hours * factor;
     result->valid = isfinite(result->rate);
     if (!result->valid) {
-        mano_error_set(error, MANO_ERR_OVERFLOW, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
                        "Tasa SST no finita");
-        return MANO_ERR_OVERFLOW;
+        return MILENA_ERR_OVERFLOW;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }
 
-ManoStatus sst_rate_from_events(const SstEventList *events, double factor,
-                                SstRateResult *result, ManoError *error) {
-    if (!events || !result) return MANO_ERR_ARGUMENT;
+MilenaStatus sst_rate_from_events(const SstEventList *events, double factor,
+                                SstRateResult *result, MilenaError *error) {
+    if (!events || !result) return MILENA_ERR_ARGUMENT;
     size_t incidents = 0, invalid = 0;
     double exposure = 0.0;
     for (size_t i = 0; i < events->count; i++) {
@@ -41,7 +41,7 @@ ManoStatus sst_rate_from_events(const SstEventList *events, double factor,
             exposure += event->horas_exposicion;
         }
     }
-    ManoStatus status = sst_rate_from_counts(incidents, exposure, factor,
+    MilenaStatus status = sst_rate_from_counts(incidents, exposure, factor,
                                               result, error);
     result->invalid_incidents = invalid;
     return status;

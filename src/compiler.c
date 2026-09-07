@@ -14,7 +14,7 @@ bool compiler_init(Compiler *compiler) {
     }
     
     compiler->has_error = false;
-    mano_error_init(&compiler->error);
+    milena_error_init(&compiler->error);
     
     return true;
 }
@@ -27,7 +27,7 @@ bool compiler_compile(Compiler *compiler, ASTNode *ast) {
     // Generar IR desde el AST
     if (!ir_generate(compiler->ir, ast)) {
         compiler->has_error = true;
-        mano_error_set(&compiler->error, MANO_ERROR_COMPILER, 
+        milena_error_set(&compiler->error, MILENA_ERROR_COMPILER, 
                       "Error generando IR", 0, 0);
         return false;
     }

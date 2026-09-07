@@ -1,16 +1,16 @@
 #include "sst_report.h"
 
-ManoStatus sst_report_write_json(const char *filename,
+MilenaStatus sst_report_write_json(const char *filename,
                                  const SstEventList *events,
                                  const SstStats *severity,
                                  const SstHistogram *histogram,
                                  const SstRateResult *rate,
-                                 ManoError *error) {
-    if (!filename || !events || !severity || !histogram || !rate) return MANO_ERR_ARGUMENT;
+                                 MilenaError *error) {
+    if (!filename || !events || !severity || !histogram || !rate) return MILENA_ERR_ARGUMENT;
     FILE *out = fopen(filename, "wb");
     if (!out) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0, "No se pudo abrir reporte SST");
-        return MANO_ERR_IO;
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0, "No se pudo abrir reporte SST");
+        return MILENA_ERR_IO;
     }
     fprintf(out, "{\n  \"analisis\": \"sst\",\n");
     fprintf(out, "  \"eventos\": %zu,\n", events->count);
@@ -43,9 +43,9 @@ ManoStatus sst_report_write_json(const char *filename,
     bool io_error = ferror(out) != 0;
     if (fclose(out) != 0) io_error = true;
     if (io_error) {
-        mano_error_set(error, MANO_ERR_IO, 0, 0, 0,
+        milena_error_set(error, MILENA_ERR_IO, 0, 0, 0,
                        "Error escribiendo reporte SST");
-        return MANO_ERR_IO;
+        return MILENA_ERR_IO;
     }
-    return MANO_OK;
+    return MILENA_OK;
 }

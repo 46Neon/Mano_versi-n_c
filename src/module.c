@@ -13,7 +13,7 @@ ModuleLoader* module_loader_create(void) {
     // Agregar ruta por defecto
     module_add_search_path(loader, ".");
     module_add_search_path(loader, "./modules");
-    module_add_search_path(loader, "/usr/local/lib/mano");
+    module_add_search_path(loader, "/usr/local/lib/milena");
     
     return loader;
 }
@@ -50,14 +50,18 @@ Module* module_load(ModuleLoader *loader, const char *name) {
         }
     }
     
-    // Buscar el archivo en los paths
+    // Milena utiliza exclusivamente la extensión .milena para sus módulos.
+    static const char *extensions[] = { ".milena" };
     char filename[512];
     for (size_t i = 0; i < loader->path_count; i++) {
-        snprintf(filename, sizeof(filename), "%s/%s.mano", 
-                 loader->search_paths[i], name);
-        
-        FILE *f = fopen(filename, "r");
-        if (f) {
+        for (size_t extension = 0;
+             extension < sizeof(extensions) / sizeof(extensions[0]);
+             extension++) {
+            snprintf(filename, sizeof(filename), "%s/%s%s",
+                     loader->search_paths[i], name, extensions[extension]);
+            
+            FILE *f = fopen(filename, "r");
+            if (!f) continue;
             fclose(f);
             
             // Crear módulo
@@ -73,7 +77,7 @@ Module* module_load(ModuleLoader *loader, const char *name) {
             // Agregar a la lista
             if (loader->count >= loader->capacity) {
                 size_t new_capacity = loader->capacity == 0 ? 8 : loader->capacity * 2;
-                Module **new_modules = (Module **)realloc(loader->modules, 
+                Module **new_modules = (Module **)realloc(loader->modules,
                                                           new_capacity * sizeof(Module *));
                 if (!new_modules) {
                     free(module->name);
@@ -101,7 +105,7 @@ bool module_add_search_path(ModuleLoader *loader, const char *path) {
     char *new_path = strdup(path);
     if (!new_path) return false;
     
-    loader->search_paths = (char **)realloc(loader->search_paths, 
+    loader->search_paths = (char **)realloc(loader->search_paths,
                                             (loader->path_count + 1) * sizeof(char *));
     if (!loader->search_paths) {
         free(new_path);
@@ -119,13 +123,7 @@ void module_loader_print(ModuleLoader *loader) {
     printf("  Módulos cargados: %zu\n", loader->count);
     for (size_t i = 0; i < loader->count; i++) {
         if (loader->modules[i]) {
-            printf("    - %s (%s)\n", 
-                   loader->modules[i]->name,
-                   loader->modules[i]->path);
+            printf("  - %s (%s)\n", loader->modules[i]->name, loader->modules[i]->path);
         }
-    }
-    printf("  Paths de búsqueda: %zu\n", loader->path_count);
-    for (size_t i = 0; i < loader->path_count; i++) {
-        printf("    - %s\n", loader->search_paths[i]);
     }
 }
