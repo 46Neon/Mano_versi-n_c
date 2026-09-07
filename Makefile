@@ -9,7 +9,7 @@ SOURCES = src/common.c src/array.c src/table.c src/finance.c src/schema.c src/da
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = milena
 
-.PHONY: all clean test test-sst test-array test-table test-finance test-language-array test-parser-array debug
+.PHONY: all clean test test-sst test-array test-table test-finance test-language-array test-parser-array test-parser-variables test-user-functions debug
 
 test-array: tests/test_array
 	./tests/test_array
@@ -56,8 +56,22 @@ tests/test_language_array: tests/test_language_array.c src/lexer.c src/ast.c src
 test-parser-array: tests/test_parser_array
 	./tests/test_parser_array
 
-tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c
-	$(CC) $(CFLAGS) tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c $(LDFLAGS) -o $@
+tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
+	$(CC) $(CFLAGS) tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c $(LDFLAGS) -o $@
+
+.PHONY: test-parser-variables
+test-parser-variables: tests/test_parser_variables
+	./tests/test_parser_variables
+
+tests/test_parser_variables: tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
+	$(CC) $(CFLAGS) tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c $(LDFLAGS) -o $@
+
+.PHONY: test-user-functions
+test-user-functions: tests/test_user_functions
+	./tests/test_user_functions
+
+tests/test_user_functions: tests/test_user_functions.c src/user_functions.c src/function_parser.c
+	$(CC) $(CFLAGS) tests/test_user_functions.c src/user_functions.c src/function_parser.c $(LDFLAGS) -o $@
 
 SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
                    src/sst_stats.c src/sst_histogram.c src/sst_rates.c \
@@ -83,7 +97,7 @@ debug:
 	$(MAKE) clean
 	$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -g3 -O0 -fsanitize=address,undefined -Iinclude' LDFLAGS='-fsanitize=address,undefined -lm'
 
-test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finance
+test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finance test-parser-array test-parser-variables test-user-functions
 	./tests/run_tests.sh
 
 clean:

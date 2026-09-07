@@ -16,6 +16,7 @@ typedef struct Parser {
 } Parser;
 
 void parser_init(Parser *parser, Lexer *lexer);
+void parser_release(Parser *parser);
 ASTNode* parser_parse(Parser *parser);
 ASTNode* parser_parse_statistical_call(Parser *parser);
 void parser_error(Parser *parser, const char *msg);

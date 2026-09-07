@@ -9,6 +9,8 @@ void parser_init(Parser *parser, Lexer *lexer) {
     milena_symbols_init(&parser->symbols);
 }
 
+void parser_release(Parser *parser) { if (parser) milena_symbols_release(&parser->symbols); }
+
 void parser_error(Parser *parser, const char *msg) {
     milena_error_set(&parser->error, MILENA_ERR_PARSE,
                      parser->current.line, parser->current.column, 0, msg);
