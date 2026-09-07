@@ -114,6 +114,16 @@ MilenaStatus milena_array_variance(MilenaArray *out, const MilenaArray *source,
                                    MilenaError *error);
 MilenaStatus milena_array_std(MilenaArray *out, const MilenaArray *source,
                               MilenaError *error);
+MilenaStatus milena_array_mean_axis(MilenaArray *out, const MilenaArray *source,
+                                    int axis, bool keepdims, MilenaError *error);
+MilenaStatus milena_array_min_axis(MilenaArray *out, const MilenaArray *source,
+                                   int axis, bool keepdims, MilenaError *error);
+MilenaStatus milena_array_max_axis(MilenaArray *out, const MilenaArray *source,
+                                   int axis, bool keepdims, MilenaError *error);
+MilenaStatus milena_array_variance_axis(MilenaArray *out, const MilenaArray *source,
+                                        int axis, bool keepdims, MilenaError *error);
+MilenaStatus milena_array_std_axis(MilenaArray *out, const MilenaArray *source,
+                                   int axis, bool keepdims, MilenaError *error);
 MilenaStatus milena_array_median(MilenaArray *out, const MilenaArray *source,
                                  MilenaError *error);
 MilenaStatus milena_array_percentile(MilenaArray *out, const MilenaArray *source,
