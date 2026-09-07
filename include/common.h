@@ -28,8 +28,19 @@ typedef enum {
     MILENA_ERR_INTERNAL
 } MilenaStatus;
 
+typedef enum {
+    MILENA_ERROR_NINGUNO,
+    MILENA_ERROR_SINTAXIS,
+    MILENA_ERROR_SEMANTICA,
+    MILENA_ERROR_TIPO,
+    MILENA_ERROR_DATOS,
+    MILENA_ERROR_MEMORIA,
+    MILENA_ERROR_EJECUCION
+} MilenaErrorCategory;
+
 typedef struct {
     MilenaStatus code;
+    MilenaErrorCategory category;
     size_t line;
     size_t column;
     size_t row;
