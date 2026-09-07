@@ -1226,3 +1226,66 @@ MilenaStatus milena_array_min_axis(MilenaArray *out, const MilenaArray *source, 
 MilenaStatus milena_array_max_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'x', error); }
 MilenaStatus milena_array_variance_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'v', error); }
 MilenaStatus milena_array_std_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 's', error); }
+
+static MilenaStatus array_percentile_axis_impl(MilenaArray *out, const MilenaArray *source,
+                                                double percentile, int axis, bool keepdims,
+                                                MilenaError *error) {
+    if (percentile < 0.0 || percentile > 100.0) {
+        array_error(error, MILENA_ERR_ARGUMENT, "El percentil debe estar entre 0 y 100");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (!source || !source->storage || source->size == 0 ||
+        (source->dtype != MILENA_DTYPE_INT64 && source->dtype != MILENA_DTYPE_FLOAT64)) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para orden estadístico");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (axis < 0) return milena_array_percentile(out, source, percentile, error);
+    if ((size_t)axis >= source->ndim) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Eje fuera de rango"); return MILENA_ERR_ARGUMENT;
+    }
+    size_t out_ndim = keepdims ? source->ndim : source->ndim - 1;
+    size_t *shape = out_ndim ? calloc(out_ndim, sizeof(size_t)) : NULL;
+    if (out_ndim && !shape) return MILENA_ERR_MEMORY;
+    size_t j = 0;
+    for (size_t i = 0; i < source->ndim; i++) {
+        if (i == (size_t)axis) { if (keepdims) shape[j++] = 1; }
+        else shape[j++] = source->shape[i];
+    }
+    MilenaStatus status = milena_array_zeros(out, MILENA_DTYPE_FLOAT64, out_ndim, shape, error);
+    free(shape); if (status != MILENA_OK) return status;
+    size_t *sc = source->ndim ? calloc(source->ndim, sizeof(size_t)) : NULL;
+    size_t *oc = out_ndim ? calloc(out_ndim, sizeof(size_t)) : NULL;
+    double *values = malloc(source->shape[axis] * sizeof(double));
+    if ((source->ndim && !sc) || (out_ndim && !oc) || !values) {
+        free(sc); free(oc); free(values); milena_array_release(out); return MILENA_ERR_MEMORY;
+    }
+    double *dst = milena_array_data(out);
+    for (size_t index = 0; index < out->size; index++) {
+        if (out_ndim) linear_coordinates(out, index, oc);
+        j = 0;
+        for (size_t i = 0; i < source->ndim; i++) {
+            if (i == (size_t)axis) sc[i] = 0; else sc[i] = oc[j++];
+        }
+        for (size_t k = 0; k < source->shape[axis]; k++) {
+            sc[axis] = k;
+            const unsigned char *p = source->storage->data + element_offset(source, sc, source->ndim);
+            values[k] = source->dtype == MILENA_DTYPE_INT64 ? (double)*(const int64_t *)p : *(const double *)p;
+        }
+        size_t count = source->shape[axis];
+        qsort(values, count, sizeof(double), compare_double_values);
+        double pos = percentile * (double)(count - 1) / 100.0;
+        size_t lo = (size_t)pos, hi = lo < count - 1 ? lo + 1 : lo;
+        dst[index] = values[lo] + (pos - (double)lo) * (values[hi] - values[lo]);
+    }
+    free(sc); free(oc); free(values); return MILENA_OK;
+}
+
+MilenaStatus milena_array_percentile_axis(MilenaArray *out, const MilenaArray *source,
+                                          double percentile, int axis, bool keepdims,
+                                          MilenaError *error) {
+    return array_percentile_axis_impl(out, source, percentile, axis, keepdims, error);
+}
+MilenaStatus milena_array_median_axis(MilenaArray *out, const MilenaArray *source,
+                                      int axis, bool keepdims, MilenaError *error) {
+    return array_percentile_axis_impl(out, source, 50.0, axis, keepdims, error);
+}
