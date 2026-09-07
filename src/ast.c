@@ -108,6 +108,8 @@ const char* ast_type_name(ASTNodeType type) {
         "EXPRESION_LITERAL",
         "EXPRESION_IDENTIFICADOR",
         "EXPRESION_FUNCION",
+        "EXPRESION_ARRAY",
+        "DECLARACION_ARRAY",
         "COMANDO_NULOS",
         "COMANDO_DUPLICADOS",
         "COMANDO_CONDICION",

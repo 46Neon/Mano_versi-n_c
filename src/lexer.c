@@ -174,6 +174,20 @@ Token lexer_next_token(Lexer *lexer) {
         lexer->current_token = token;
         return token;
     }
+
+    if (c == '[') {
+        lexer_advance_char(lexer);
+        token = lexer_create_token(lexer, TOKEN_CORCHETE_IZQ, "[");
+        lexer->current_token = token;
+        return token;
+    }
+
+    if (c == ']') {
+        lexer_advance_char(lexer);
+        token = lexer_create_token(lexer, TOKEN_CORCHETE_DER, "]");
+        lexer->current_token = token;
+        return token;
+    }
     
     if (c == ':') {
         lexer_advance_char(lexer);
@@ -392,7 +406,7 @@ const char *token_type_name(TokenType type) {
         "RESUMIR", "CARGAR", "NULOS", "DUPLICADOS", "CONDICION",
         "EXTRAER", "TOTAL", "PERIODO",
         "PUNTO", "NUMERAL", "LLAVE_IZQ", "LLAVE_DER", "PAR_IZQ", "PAR_DER",
-        "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
+        "CORCHETE_IZQ", "CORCHETE_DER", "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
         "IGUAL", "IGUAL_IGUAL", "DISTINTO", "MAYOR", "MAYOR_IGUAL",
         "MENOR", "MENOR_IGUAL", "MAS", "MENOS", "POR", "DIV", "ASIGNACION",
         "IDENTIFICADOR", "CADENA", "NUMERO", "BOOLEANO", "COMMENT"

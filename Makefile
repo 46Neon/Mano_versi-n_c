@@ -9,7 +9,7 @@ SOURCES = src/common.c src/array.c src/table.c src/finance.c src/schema.c src/da
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = milena
 
-.PHONY: all clean test test-sst test-array test-table test-finance debug
+.PHONY: all clean test test-sst test-array test-table test-finance test-language-array debug
 
 test-array: tests/test_array
 	./tests/test_array
@@ -30,6 +30,14 @@ test-finance: tests/test_finance
 
 tests/test_finance: tests/test_finance.c src/finance.c src/common.c
 	$(CC) $(CFLAGS) tests/test_finance.c src/finance.c src/common.c $(LDFLAGS) -o $@
+
+.PHONY: test-language-array
+
+test-language-array: tests/test_language_array
+	./tests/test_language_array
+
+tests/test_language_array: tests/test_language_array.c src/lexer.c src/ast.c src/common.c
+	$(CC) $(CFLAGS) tests/test_language_array.c src/lexer.c src/ast.c src/common.c $(LDFLAGS) -o $@
 
 SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
                    src/sst_stats.c src/sst_histogram.c src/sst_rates.c \
@@ -55,7 +63,7 @@ debug:
 	$(MAKE) clean
 	$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -g3 -O0 -fsanitize=address,undefined -Iinclude' LDFLAGS='-fsanitize=address,undefined -lm'
 
-test: $(TARGET) test-sst test-array test-table test-finance
+test: $(TARGET) test-sst test-array test-table test-finance test-language-array
 	./tests/run_tests.sh
 
 clean:
