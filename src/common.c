@@ -29,6 +29,18 @@ void milena_error_set(MilenaError *error, MilenaStatus code, size_t line,
     (void)snprintf(error->message, sizeof(error->message), "%s", message);
 }
 
+const char *milena_error_category_name(MilenaErrorCategory category) {
+    switch (category) {
+        case MILENA_ERROR_SINTAXIS: return "SINTAXIS";
+        case MILENA_ERROR_SEMANTICA: return "SEMANTICA";
+        case MILENA_ERROR_TIPO: return "TIPO";
+        case MILENA_ERROR_DATOS: return "DATOS";
+        case MILENA_ERROR_MEMORIA: return "MEMORIA";
+        case MILENA_ERROR_EJECUCION: return "EJECUCION";
+        default: return "NINGUNA";
+    }
+}
+
 const char *milena_status_name(MilenaStatus status) {
     switch (status) {
         case MILENA_OK: return "OK";
@@ -84,7 +96,8 @@ MilenaStatus milena_parse_double(const char *text, double *value) {
 void milena_error_print(const MilenaError *error, FILE *stream) {
     if (!error || error->code == MILENA_OK) return;
     if (!stream) stream = stderr;
-    fprintf(stream, "Milena [%s]", milena_status_name(error->code));
+    fprintf(stream, "Milena [%s/%s]", milena_error_category_name(error->category),
+            milena_status_name(error->code));
     if (error->line) fprintf(stream, " línea %zu", error->line);
     if (error->row) fprintf(stream, " fila %zu", error->row);
     if (error->column) fprintf(stream, " columna %zu", error->column);
