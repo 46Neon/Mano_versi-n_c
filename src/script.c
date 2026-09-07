@@ -617,8 +617,16 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
     size_t declarations = 0;
     ScriptArrayBinding *bindings = NULL;
     size_t binding_count = 0;
-    while ((cursor = strstr(cursor, "array")) != NULL) {
-        const char *name_start = cursor + 5;
+    while (true) {
+        const char *english_keyword = strstr(cursor, "array");
+        const char *spanish_keyword = strstr(cursor, "arreglo");
+        if (!english_keyword && !spanish_keyword) break;
+        const char *keyword = !english_keyword ? spanish_keyword :
+            !spanish_keyword ? english_keyword :
+            english_keyword < spanish_keyword ? english_keyword : spanish_keyword;
+        size_t keyword_length = keyword == spanish_keyword ? 7 : 5;
+        cursor = keyword;
+        const char *name_start = cursor + keyword_length;
         if (*name_start && !isspace((unsigned char)*name_start)) {
             cursor = name_start;
             continue;
@@ -649,7 +657,8 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
         }
         const char *expression = equal + 1;
         while (isspace((unsigned char)*expression)) expression++;
-        bool zeros = strncmp(expression, "zeros", 5) == 0;
+        bool zeros = strncmp(expression, "zeros", 5) == 0 ||
+                     strncmp(expression, "ceros", 5) == 0;
         const char *start = NULL;
         const char *end = NULL;
         if (zeros) {
@@ -994,7 +1003,8 @@ MilenaStatus milena_run_script(const char *filename, MilenaError *error) {
     if (!filename) return MILENA_ERR_ARGUMENT;
     char *script = read_file(filename, error);
     if (!script) return error && error->code ? error->code : MILENA_ERR_IO;
-    if (strstr(script, "array") != NULL && strstr(script, "dataset cargar") == NULL) {
+    if ((strstr(script, "array") != NULL || strstr(script, "arreglo") != NULL) &&
+        strstr(script, "dataset cargar") == NULL) {
         MilenaStatus array_status = run_array_declarations(script, error);
         free(script);
         return array_status;
