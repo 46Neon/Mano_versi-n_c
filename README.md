@@ -1,297 +1,136 @@
 # Milena
 
-Milena es un lenguaje y motor de análisis de datos escrito en C17. Su objetivo es trabajar con datos generales de forma reproducible: cargar tablas, validar tipos y calidad, transformar columnas, calcular estadísticas y generar reportes que puedan ser revisados por personas y por otras herramientas.
+Milena es un lenguaje y motor nativo para análisis de datos, estadística y computación científica. Está diseñado para trabajar con arreglos, tablas y operaciones reproducibles mediante scripts con extensión `.milena`.
 
-El soporte SST es el primer dominio desarrollado, no el límite del proyecto. La lógica financiera, los análisis estadísticos generales y los módulos opcionales de inteligencia artificial se incorporarán de forma progresiva. La visualización no forma parte del núcleo actual.
+Su objetivo es convertirse en una herramienta clave para el análisis de datos del futuro: clara para las personas, controlable para equipos técnicos y portable entre dispositivos móviles y sistemas de escritorio. Ese objetivo es progresivo; el proyecto se desarrolla por etapas y cada capacidad se valida antes de presentarse como terminada.
 
-> **Alcance:** Milena es una herramienta de apoyo. No sustituye a profesionales, auditorías, investigaciones, sistemas oficiales, asesoría legal, contable o médica, ni convierte correlaciones en causalidad.
+## Qué puede hacer hoy
 
-## Estado actual
+- Crear arreglos numéricos y arreglos de ceros.
+- Consultar forma, dimensiones y tamaño.
+- Ejecutar operaciones entre arreglos y escalares.
+- Aplicar broadcasting en operaciones compatibles.
+- Calcular suma, media, mínimo, máximo, varianza y desviación estándar.
+- Calcular mediana y percentiles con interpolación lineal.
+- Reducir operaciones por eje y conservar dimensiones.
+- Trabajar con vistas, strides, reshape y transposición desde el motor de arreglos.
+- Analizar archivos tabulares y generar reportes reproducibles.
+- Ejecutar módulos de análisis preventivo y estadístico con advertencias explícitas.
 
-- Carga y validación de CSV con límites operativos.
-- Perfilado de columnas, valores numéricos, categorías y variables binarias.
-- Limpieza de nulos y duplicados.
-- Estadística descriptiva, correlación, histogramas, normalidad aproximada y pruebas de contingencia.
-- Módulos iniciales para análisis SST.
-- Reportes JSON reproducibles.
-- Compilación C17 con advertencias estrictas y pruebas automatizadas.
+La visualización, los sistemas distribuidos y los modelos avanzados todavía forman parte de etapas posteriores.
 
-Milena analiza datos existentes y debe mostrar advertencias cuando un método sea aproximado o cuando no permita extraer conclusiones causales.
+## Primer ejemplo
 
-La extensión oficial para los scripts y módulos de Milena es `.milena`. Los archivos nuevos y los ejemplos deben utilizar exclusivamente esta extensión.
+```milena
+arreglo valores = [1, 2, 3, 4];
 
-## Compilar
+forma(valores);
+tamaño(valores);
+media(valores);
+mediana(valores);
+percentil(valores, 90);
+```
+
+## Arreglos multidimensionales
+
+```milena
+arreglo matriz = ceros(2, 3);
+
+media(matriz, eje 0);
+mediana(matriz, eje 1);
+percentil(matriz, 90, eje 0);
+```
+
+Para conservar el eje reducido:
+
+```milena
+media(matriz, eje 0, conservar dimensiones);
+mediana(matriz, eje 1, conservar dimensiones);
+percentil(matriz, 90, eje 0, conservar dimensiones);
+```
+
+Para eliminarlo explícitamente:
+
+```milena
+media(matriz, eje 0, sin conservar dimensiones);
+```
+
+La sintaxis española se está incorporando gradualmente. Durante la transición pueden existir nombres históricos compatibles, pero los ejemplos nuevos deben preferir las palabras españolas.
+
+## Operaciones disponibles
+
+```milena
+suma(valores);
+media(valores);
+minimo(valores);
+maximo(valores);
+varianza(valores);
+desviacion_estandar(valores);
+mediana(valores);
+percentil(valores, 95);
+```
+
+Las operaciones ordenadas devuelven resultados numéricos de precisión doble y no modifican el arreglo original.
+
+## Archivos y ejecución
+
+Los scripts de Milena utilizan exclusivamente la extensión `.milena`.
 
 ```bash
 ./build.sh
+./milena run ejemplos/estadistica.milena
+./milena analizar datos.csv reporte.json
+./milena perfil datos.csv perfil.json
 ```
 
-También se puede compilar con:
+La forma exacta de algunos comandos de archivos y reportes continúa evolucionando junto con el lenguaje. Los scripts deben conservar los datos de entrada, las reglas de limpieza y la versión del motor para facilitar la reproducción del análisis.
 
-```bash
-make
-```
-
-La compilación utiliza C17 y advertencias estrictas. En un entorno de validación se recomienda ejecutar también GCC y Clang con ASan y UBSan.
-
-## Ejecutar
-
-```bash
-./milena analizar mi_archivo.csv reporte_milena.json
-./milena perfil mi_archivo.csv perfil.json
-./milena run examples/clasificacion_binaria.milena
-./milena inspect mi_archivo.csv
-```
-
-Un script produce el reporte general indicado en `.exportar`. Si contiene operaciones SST, también produce un archivo con el sufijo:
+## Cómo se organiza Milena
 
 ```text
-reporte_milena.json.sst.json
+script .milena
+      ↓
+lexer y parser
+      ↓
+representación semántica
+      ↓
+motor de arreglos y tablas
+      ↓
+operaciones estadísticas
+      ↓
+resultado o reporte
 ```
 
-## Sintaxis de variables
+El motor separa la forma en que una persona escribe una operación de la implementación interna que la ejecuta. Esta separación permite mejorar la sintaxis sin reescribir los cálculos fundamentales.
 
-```milena
-variable fecha fecha
-variable area categorica
-variable turno categorica
-variable severidad numerica
-variable dias_incapacidad numerica
-variable horas_exposicion numerica
-variable ocurrio_incidente binaria
+## Proceso de desarrollo
 
-entrada categorica "area"
-salida binaria "ocurrio_incidente"
-```
+Milena avanza en capas:
 
-Tipos soportados:
+1. Arreglos, formas, strides y broadcasting.
+2. Estadística global y por eje.
+3. Pruebas de vistas, errores y resultados reproducibles.
+4. Sintaxis española estructurada.
+5. Álgebra lineal y memoria optimizada.
+6. Árboles de decisión y bosques.
+7. Integración numérica y optimización.
+8. Diferenciación automática y modelos científicos avanzados.
+9. Optimizaciones específicas de cada plataforma.
 
-- `numerica`: validación con `strtod`, promedio, mínimo y máximo.
-- `categorica`: conteo de valores y nulos.
-- `binaria`: reconoce `0/1`, `true/false`, `verdadero/falso`, `yes/no` y `si/no`.
-- `fecha` y `texto`: metadata y validación básica.
-
-## Operaciones de limpieza
-
-```milena
-#nulos("eliminar")
-#duplicados("eliminar")
-#total("precio * cantidad")
-#periodo extraer("mes de fecha")
-#condicion("total > 0")
-```
-
-## Operaciones estadísticas SST
-
-```milena
-#perfil_numerico("severidad")
-#perfil_avanzado("severidad")
-#histograma("severidad", bins = 5)
-#normalidad("severidad")
-#balance("ocurrio_incidente")
-#tasa("ocurrio_incidente", "horas_exposicion", factor = 200000)
-#poisson("ocurrio_incidente", "horas_exposicion", factor = 200000)
-#correlacion("severidad", "dias_incapacidad")
-#chi_cuadrado("area", "ocurrio_incidente")
-```
-
-### Interpretación de las operaciones
-
-- `#perfil_numerico`: resumen descriptivo de una variable.
-- `#perfil_avanzado`: CV, asimetría, kurtosis y percentiles.
-- `#histograma`: distribución por intervalos, underflow y overflow.
-- `#normalidad`: diagnóstico Jarque-Bera aproximado; no es Shapiro-Wilk exacto.
-- `#balance`: conteo de positivos, negativos e inválidos.
-- `#tasa`: incidentes divididos entre exposición y multiplicados por un factor.
-- `#poisson`: intervalo de tasa para conteos Poisson mediante inversión numérica de la CDF en rangos soportados.
-- `#correlacion`: Pearson con pares válidos y control de variación.
-- `#chi_cuadrado`: tabla de contingencia, estadístico, grados de libertad y celdas esperadas bajas.
-
-Las tasas siempre deben interpretarse junto con su denominador, factor, periodo y definición de exposición.
-
-## Comandos no soportados
-
-Un comando desconocido no se ignora. Milena produce un error explícito para evitar informes aparentemente completos:
-
-```text
-UNSUPPORTED: Comando Milena no reconocido; no se ignorará silenciosamente
-```
-
-Las funciones de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon existen como módulos C en esta etapa, pero su sintaxis `.milena` todavía debe terminar de integrarse y validarse antes de presentarse como operaciones del lenguaje.
-
-## Reportes y advertencias
-
-Los reportes incluyen, según corresponda:
-
-- filas cargadas y filas inválidas;
-- columnas y variables declaradas;
-- perfiles numéricos;
-- categorías y frecuencias;
-- valores nulos;
-- positivos, negativos e inválidos;
-- tasa y denominador;
-- tamaño muestral;
-- datos excluidos;
-- método utilizado;
-- indicador `aproximado`;
-- advertencias de muestra pequeña;
-- advertencia de que asociación estadística no implica causalidad.
-
-Estas advertencias son controles de interpretación, no una certificación legal ni una firma profesional.
-
-## Trazabilidad prevista
-
-Para que un análisis sea reproducible, el flujo profesional debe conservar:
-
-- archivo CSV original;
-- script `.milena` utilizado;
-- configuración y factor de exposición;
-- versión del motor;
-- reporte generado;
-- filas rechazadas y reglas de limpieza;
-- revisión del profesional SST.
-
-El logger del proyecto soporta texto y JSON Lines con `job_id`, timestamp, archivo, línea, función y mensaje. El módulo de métricas soporta contadores de filas y duración. La instrumentación completa de todas las operaciones continúa en evolución.
-
-## Límites por defecto
-
-```text
-máximo de filas:          5.000
-máximo de columnas:          70
-máximo aproximado por campo: 1 MiB
-```
-
-Estos límites hacen que el almacenamiento actual en memoria sea razonable para el alcance inicial. Milena no es todavía un sistema distribuido, un motor columnar ni una plataforma Big Data.
-
-## Arquitectura SST
-
-```text
-CSV
- ↓
-calidad y validación
- ↓
-esquema y script Milena
- ↓
-operación estadística
- ↓
-módulo SST
- ↓
-advertencias y trazabilidad
- ↓
-reporte JSON
-```
-
-Módulos principales:
-
-- `sst_dates`: fechas ISO, comparación, fechas futuras y días desde epoch.
-- `sst_model`: eventos SST, riesgos y valores binarios.
-- `sst_stats`: media, varianza, desviación estándar y Welford.
-- `sst_histogram`: histogramas con underflow, overflow e inválidos.
-- `sst_rates`: tasas por exposición y factor configurable.
-- `sst_advanced`: CV, asimetría, kurtosis y percentiles.
-- `sst_contingency`: tablas de contingencia y chi-cuadrado.
-- `sst_correlation`: correlación de Pearson.
-- `sst_normality`: diagnóstico Jarque-Bera aproximado.
-- `sst_inference`: Poisson, riesgo relativo, odds ratio y pruebas aproximadas.
-- `sst_report`: reportes generales.
-- `sst_report_advanced`: reportes estadísticos avanzados y advertencias.
-- `logger`: logging de texto o JSON Lines.
-- `metrics`: duración y contadores de ejecución.
-
-## Uso preventivo correcto
-
-```text
-Datos SST existentes
-        ↓
-Milena detecta patrones y señales
-        ↓
-Profesional SST interpreta y valida
-        ↓
-Investigación preventiva
-        ↓
-Medidas de control y seguimiento
-```
-
-Milena puede ayudar a identificar áreas con mayor frecuencia, cambios temporales, distribución de severidad, diferencias entre turnos y posibles relaciones entre variables. No determina responsabilidades, no prueba causalidad y no reemplaza entrevistas, inspecciones, evidencias ni métodos formales de investigación.
+Cada etapa debe conservar la portabilidad, la trazabilidad y los errores explícitos. Las optimizaciones de hardware se incorporarán como mejoras opcionales, no como requisitos que limiten el uso del lenguaje.
 
 ## Limitaciones actuales
 
-- No sustituye sistemas oficiales ni formularios regulatorios.
-- No certifica cumplimiento legal.
-- No determina causalidad.
-- No firma digitalmente reportes.
-- No gestiona expedientes médicos.
-- No propone automáticamente medidas de control.
-- Algunos métodos inferenciales son aproximados.
-- La integración de riesgo relativo, odds ratio, Mann-Whitney y Wilcoxon con la sintaxis `.milena` sigue pendiente.
-- La ejecución con GCC, Clang, ASan, UBSan y herramientas de fugas debe validarse en CI.
+Milena todavía no es una plataforma distribuida ni un sistema completo de aprendizaje automático. Algunas funciones estadísticas y partes de la sintaxis siguen en integración. Los resultados deben interpretarse según los datos, el método utilizado y el contexto del análisis.
 
-## Instalación en Termux mediante APT
+Milena no sustituye una auditoría, una investigación profesional, una decisión médica, legal o financiera, ni una validación especializada.
 
-Una vez publicado el repositorio APT, la instalación para una persona usuaria no requiere clonar el código ni compilar Milena. Se necesita la dirección pública del sitio APT configurado para la distribución y la clave pública del repositorio.
+## Estado del proyecto
 
-```bash
-pkg install curl gnupg
-mkdir -p "$PREFIX/etc/apt/keyrings" "$PREFIX/etc/apt/sources.list.d"
-NETLIFY_REPO_URL="PEGA_AQUI_LA_DIRECCION_PUBLICA_DEL_REPOSITORIO"
-curl -fsSL "$NETLIFY_REPO_URL/milena-archive-keyring.asc" \
-  | gpg --dearmor \
-  > "$PREFIX/etc/apt/keyrings/milena-archive.gpg"
-printf 'deb [signed-by=%s] %s stable main\n' \
-  "$PREFIX/etc/apt/keyrings/milena-archive.gpg" \
-  "$NETLIFY_REPO_URL" \
-  > "$PREFIX/etc/apt/sources.list.d/milena.list"
-apt-get update --allow-releaseinfo-change
-pkg install milena
-```
+El desarrollo se valida continuamente en entornos Linux y Windows. La compatibilidad con Termux es una prioridad del proyecto, junto con un núcleo pequeño, portable y controlable.
 
-Para actualizar:
+Milena aspira a ser un lenguaje importante para el análisis de datos porque combina una sintaxis progresivamente más clara con un motor especializado en arreglos, estadística reproducible y computación científica. Esa aspiración se construye con resultados verificables, no con promesas de capacidades que todavía no existen.
 
-```bash
-pkg update
-pkg upgrade milena
-```
+## Licencia
 
-Para desinstalar solamente Milena:
-
-```bash
-apt remove milena
-```
-
-La dirección pública del repositorio debe copiarse desde el despliegue de Netlify; no debe confundirse con el panel privado de administración.
-
-## Empaquetado para Termux
-
-El flujo de empaquetado se encuentra en `packaging/termux/`. La primera fase genera un `.deb` local para la arquitectura de Termux donde se ejecuta:
-
-```bash
-./packaging/termux/build-local-deb.sh
-```
-
-Para ofrecer una instalación pública mediante:
-
-```bash
-pkg install milena
-```
-
-El repositorio APT se genera con índices `Packages.gz`, metadatos `Release`/`InRelease`, firmas y paquetes separados por arquitectura. GitHub Actions lo publica en un sitio estático de Netlify; la clave privada GPG permanece en los secretos de Actions.
-
-Un paquete Termux no debe mezclarse con un paquete Debian/Ubuntu ni con un ejecutable Windows. Cada plataforma requiere su propia compilación y distribución. Consulta `packaging/termux/README.md` antes de publicar.
-
-El canal Debian/Ubuntu está en `packaging/debian/` y el canal Windows en `packaging/windows/`. La plantilla de automatización Linux/Windows está en `packaging/ci/build-release.yml`. El job Termux sigue siendo manual porque debe compilarse dentro del entorno Android/Termux y no debe sustituirse por un binario Linux con libc incompatible.
-
-## Próximas mejoras
-
-La hoja de ruta completa está en [`PLAN_MILENA.md`](PLAN_MILENA.md). El orden acordado es:
-
-1. Consolidar la identidad Milena y la compatibilidad de la sintaxis actual.
-2. Ampliar el núcleo de tablas y análisis de datos generales.
-3. Incorporar lógica financiera con representación monetaria segura.
-4. Mejorar rendimiento, memoria y arquitectura modular.
-5. Añadir módulos de inteligencia artificial reproducibles y explicables.
-6. Revisar la sintaxis cuando el modelo de datos esté estable.
-7. Aumentar documentación, colaboración, adopción y madurez antes de solicitar nuevamente Termux.
-
-## Nota de responsabilidad
-
-Milena es una solución tecnológica de apoyo para análisis de datos SST y prevención. Las conclusiones que afecten la seguridad de trabajadores deben ser revisadas por personal competente y complementadas con la evidencia operativa correspondiente.
+Milena se distribuye bajo la licencia MIT.
