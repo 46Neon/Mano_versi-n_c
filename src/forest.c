@@ -6,6 +6,24 @@ static double forest_value(const MilenaArray *a, size_t index) {
     return ((const double *)milena_array_const_data(a))[index];
 }
 
+static int64_t forest_majority(const MilenaArray *labels, const MilenaArray *features,
+                               size_t feature, double threshold, bool left) {
+    size_t rows = features->shape[0];
+    const int64_t *values = milena_array_const_data(labels);
+    int64_t best = values[0]; size_t best_count = 0;
+    for (size_t i = 0; i < rows; i++) {
+        double value = forest_value(features, i * features->shape[1] + feature);
+        if ((value <= threshold) != left) continue;
+        size_t count = 0;
+        for (size_t j = 0; j < rows; j++) {
+            double other = forest_value(features, j * features->shape[1] + feature);
+            if ((other <= threshold) == left && values[j] == values[i]) count++;
+        }
+        if (count > best_count) { best_count = count; best = values[i]; }
+    }
+    return best;
+}
+
 void milena_forest_init(MilenaForestClassifier *forest) {
     if (forest) { forest->tree_count = 0; forest->feature_count = 0; forest->trees = NULL; }
 }
@@ -35,13 +53,9 @@ MilenaStatus milena_forest_train(MilenaForestClassifier *forest,
         double low = forest_value(features, feature), high = low;
         for (size_t r = 1; r < rows; r++) { double v = forest_value(features, r * cols + feature); if (v < low) low = v; if (v > high) high = v; }
         double threshold = (low + high) / 2.0;
-        size_t left0 = 0, left1 = 0, right0 = 0, right1 = 0;
-        for (size_t r = 0; r < rows; r++) {
-            int label = forest_value(labels, r) != 0.0;
-            if (forest_value(features, r * cols + feature) <= threshold) { if (label) left1++; else left0++; }
-            else { if (label) right1++; else right0++; }
-        }
-        trees[t] = (MilenaDecisionStump){feature, threshold, left1 >= left0, right1 >= right0};
+        int64_t left_class = forest_majority(labels, features, feature, threshold, true);
+        int64_t right_class = forest_majority(labels, features, feature, threshold, false);
+        trees[t] = (MilenaDecisionStump){feature, threshold, left_class, right_class};
     }
     milena_forest_release(forest); forest->trees = trees; forest->tree_count = tree_count; forest->feature_count = cols;
     return MILENA_OK;
@@ -59,13 +73,21 @@ MilenaStatus milena_forest_predict(const MilenaForestClassifier *forest,
     if (status != MILENA_OK) return status;
     int64_t *out = milena_array_data(predictions);
     for (size_t r = 0; r < features->shape[0]; r++) {
-        size_t votes = 0;
+        int64_t best_label = 0; size_t best_votes = 0;
         for (size_t t = 0; t < forest->tree_count; t++) {
             const MilenaDecisionStump *tree = &forest->trees[t];
             double value = forest_value(features, r * features->shape[1] + tree->feature);
-            votes += value <= tree->threshold ? (size_t)tree->left_class : (size_t)tree->right_class;
+            int64_t label = value <= tree->threshold ? tree->left_class : tree->right_class;
+            size_t votes = 0;
+            for (size_t u = 0; u <= t; u++) {
+                const MilenaDecisionStump *other = &forest->trees[u];
+                double other_value = forest_value(features, r * features->shape[1] + other->feature);
+                int64_t other_label = other_value <= other->threshold ? other->left_class : other->right_class;
+                if (other_label == label) votes++;
+            }
+            if (votes > best_votes) { best_votes = votes; best_label = label; }
         }
-        out[r] = votes * 2 >= forest->tree_count;
+        out[r] = best_label;
     }
     return MILENA_OK;
 }
