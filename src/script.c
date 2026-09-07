@@ -665,15 +665,36 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
             return MILENA_ERR_PARSE;
         }
         size_t count = 0;
+        size_t ndim = 1;
+        size_t shape[8] = {0};
         if (zeros) {
-            char *number_end = NULL;
-            unsigned long parsed = strtoul(start + 1, &number_end, 10);
-            if (number_end != end || parsed == 0 || parsed > SIZE_MAX) {
-                milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
-                                 "zeros requiere una longitud positiva");
-                return MILENA_ERR_PARSE;
+            const char *scan = start + 1;
+            ndim = 0;
+            count = 1;
+            while (scan < end) {
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                char *number_end = NULL;
+                unsigned long parsed = strtoul(scan, &number_end, 10);
+                if (ndim >= 8 || number_end == scan || parsed == 0 || parsed > SIZE_MAX) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "zeros requiere dimensiones positivas");
+                    return MILENA_ERR_PARSE;
+                }
+                shape[ndim++] = (size_t)parsed;
+                if (!milena_size_mul(count, (size_t)parsed, &count)) {
+                    milena_error_set(error, MILENA_ERR_OVERFLOW, 0, 0, 0,
+                                     "El tamaño de zeros desborda size_t");
+                    return MILENA_ERR_OVERFLOW;
+                }
+                scan = number_end;
+                while (scan < end && isspace((unsigned char)*scan)) scan++;
+                if (scan < end && *scan != ',') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Se esperaba ',' entre dimensiones");
+                    return MILENA_ERR_PARSE;
+                }
+                if (scan < end) scan++;
             }
-            count = (size_t)parsed;
         } else {
             const char *scan = start + 1;
             while (scan < end) {
@@ -696,11 +717,11 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 if (scan < end) scan++;
             }
         }
-        size_t shape[] = {count};
+        if (!zeros) shape[0] = count;
         MilenaArray array = {0};
         MilenaStatus status;
         if (zeros) {
-            status = milena_array_zeros(&array, MILENA_DTYPE_FLOAT64, 1,
+            status = milena_array_zeros(&array, MILENA_DTYPE_FLOAT64, ndim,
                                         shape, error);
         } else {
             double *values = (double *)malloc(count * sizeof(double));
@@ -729,8 +750,13 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
             free(values); free(integers);
         }
         if (status != MILENA_OK) return status;
-        printf("Array %s: dtype=%s, shape=(%zu), size=%zu\n", name,
-               milena_dtype_name(array.dtype), array.shape[0], array.size);
+        printf("Array %s: dtype=%s, shape=", name, milena_dtype_name(array.dtype));
+        printf("(");
+        for (size_t axis = 0; axis < array.ndim; axis++) {
+            if (axis) printf(", ");
+            printf("%zu", array.shape[axis]);
+        }
+        printf("), size=%zu\n", array.size);
         ScriptArrayBinding *grown = (ScriptArrayBinding *)realloc(
             bindings, (binding_count + 1) * sizeof(*bindings));
         if (!grown) {
