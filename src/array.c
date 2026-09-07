@@ -1041,3 +1041,62 @@ MilenaStatus milena_array_sum(MilenaArray *out, const MilenaArray *source,
     free(output_shape);
     return MILENA_OK;
 }
+
+static MilenaStatus array_stat_value(MilenaArray *out, const MilenaArray *source,
+                                      char statistic, MilenaError *error) {
+    if (!out || !source || !source->storage || source->size == 0) {
+        array_error(error, MILENA_ERR_ARGUMENT, "El array debe tener elementos para estadística");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (source->dtype != MILENA_DTYPE_INT64 && source->dtype != MILENA_DTYPE_FLOAT64) {
+        array_error(error, MILENA_ERR_UNSUPPORTED, "Estadística no soportada para este dtype");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+    MilenaStatus status = milena_array_zeros(out, MILENA_DTYPE_FLOAT64, 0, NULL, error);
+    if (status != MILENA_OK) return status;
+    const int64_t *idata = source->dtype == MILENA_DTYPE_INT64 ?
+        (const int64_t *)milena_array_const_data(source) : NULL;
+    const double *fdata = source->dtype == MILENA_DTYPE_FLOAT64 ?
+        (const double *)milena_array_const_data(source) : NULL;
+    double *result = (double *)milena_array_data(out);
+    double mean = 0.0;
+    if (statistic == 'v' || statistic == 's' || statistic == 'm') {
+        for (size_t i = 0; i < source->size; i++) mean += idata ? (double)idata[i] : fdata[i];
+        mean /= (double)source->size;
+    }
+    if (statistic == 'm') *result = mean;
+    else if (statistic == 'n' || statistic == 'x') {
+        double value = idata ? (double)idata[0] : fdata[0];
+        for (size_t i = 1; i < source->size; i++) {
+            double current = idata ? (double)idata[i] : fdata[i];
+            if ((statistic == 'n' && current < value) || (statistic == 'x' && current > value)) value = current;
+        }
+        *result = value;
+    } else {
+        double sum = 0.0;
+        for (size_t i = 0; i < source->size; i++) {
+            double value = idata ? (double)idata[i] : fdata[i];
+            double delta = value - mean;
+            sum += delta * delta;
+        }
+        *result = sum / (double)source->size;
+        if (statistic == 's') *result = sqrt(*result);
+    }
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_mean(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
+    return array_stat_value(out, source, 'm', error);
+}
+MilenaStatus milena_array_min(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
+    return array_stat_value(out, source, 'n', error);
+}
+MilenaStatus milena_array_max(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
+    return array_stat_value(out, source, 'x', error);
+}
+MilenaStatus milena_array_variance(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
+    return array_stat_value(out, source, 'v', error);
+}
+MilenaStatus milena_array_std(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
+    return array_stat_value(out, source, 's', error);
+}
