@@ -7,7 +7,7 @@ $Output = Join-Path $OutputDir 'milena.exe'
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $SourceNames = @(
-    'analysis.c', 'common.c', 'dataset.c', 'logger.c', 'main.c', 'metrics.c',
+    'analysis.c', 'array.c', 'common.c', 'dataset.c', 'logger.c', 'main.c', 'metrics.c',
     'schema.c', 'script.c', 'sst_advanced.c', 'sst_contingency.c',
     'sst_correlation.c', 'sst_dates.c', 'sst_histogram.c', 'sst_inference.c',
     'sst_model.c', 'sst_normality.c', 'sst_rates.c', 'sst_report.c',
