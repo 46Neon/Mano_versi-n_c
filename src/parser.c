@@ -34,7 +34,8 @@ bool parser_expect(Parser *parser, TokenType type, const char *msg) {
 
 static ASTNode *parse_array_declaration(Parser *parser) {
     if (!parser || !parser_match(parser, TOKEN_IDENTIFICADOR) ||
-        strcmp(parser->current.lexeme, "array") != 0) return NULL;
+        (strcmp(parser->current.lexeme, "array") != 0 &&
+         strcmp(parser->current.lexeme, "arreglo") != 0)) return NULL;
     parser_advance(parser);
 
     if (!parser_expect(parser, TOKEN_IDENTIFICADOR,
@@ -114,7 +115,8 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
     // Parsear contenido del bloque
     while (!parser_match(parser, TOKEN_LLAVE_DER) && !parser_match(parser, TOKEN_EOF)) {
         if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
-            strcmp(parser->current.lexeme, "array") == 0) {
+            (strcmp(parser->current.lexeme, "array") == 0 ||
+             strcmp(parser->current.lexeme, "arreglo") == 0)) {
             ASTNode *declaration = parse_array_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
         } else if (parser_match(parser, TOKEN_NUMERAL)) {
@@ -246,19 +248,9 @@ ASTNode* parser_parse(Parser *parser) {
     
     if (parser->current.type == TOKEN_FUNCION_MEDIANA ||
         parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-        /* A statistical program is a sequence, not a single expression.  Keep
-         * parsing after each semicolon so callers can compose analyses while
-         * preserving the existing AST node per operation. */
-        while (parser->current.type == TOKEN_FUNCION_MEDIANA ||
-               parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-            ASTNode *statistic = parser_parse_statistical_call(parser);
-            if (statistic) ast_add_child(program, statistic);
-            else break;
-            if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA,
-                               "Se esperaba ';' después de la operación estadística")) {
-                break;
-            }
-        }
+        ASTNode *statistic = parser_parse_statistical_call(parser);
+        if (statistic) ast_add_child(program, statistic);
+        if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
     } else {
         ASTNode *analisis = parse_bloque_analisis(parser);
         if (analisis) ast_add_child(program, analisis);
