@@ -795,6 +795,8 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
             }
             char name[128];
             double requested_percentile = 50.0;
+            int requested_axis = -1;
+            bool requested_keepdims = false;
             size_t length = (size_t)(name_end - position);
             memcpy(name, position, length);
             name[length] = '\0';
@@ -814,6 +816,22 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                     milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
                                      "Porcentaje inválido");
                     goto array_cleanup_error;
+                }
+            } else if (operation >= 3 && operation <= 8) {
+                char *comma = strchr(name, ',');
+                if (comma) {
+                    *comma++ = '\0';
+                    while (isspace((unsigned char)*comma)) comma++;
+                    char *axis_end = NULL;
+                    long parsed_axis = strtol(comma, &axis_end, 10);
+                    while (axis_end && isspace((unsigned char)*axis_end)) axis_end++;
+                    if (!axis_end || axis_end == comma || *axis_end != '\0' ||
+                        parsed_axis < -1 || parsed_axis > INT_MAX) {
+                        milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                         "Eje inválido");
+                        goto array_cleanup_error;
+                    }
+                    requested_axis = (int)parsed_axis;
                 }
             }
             ScriptArrayBinding *binding = find_script_array(bindings, binding_count, name);
@@ -852,15 +870,21 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 MilenaArray result = {0};
                 MilenaStatus stat_status;
                 if (operation == 3) stat_status = milena_array_sum(
-                    &result, &binding->array, -1, false, error);
-                else if (operation == 4) stat_status = milena_array_mean(
-                    &result, &binding->array, error);
-                else if (operation == 5) stat_status = milena_array_min(
-                    &result, &binding->array, error);
-                else if (operation == 6) stat_status = milena_array_max(
-                    &result, &binding->array, error);
-                else if (operation == 7) stat_status = milena_array_variance(
-                    &result, &binding->array, error);
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 4 && requested_axis >= 0) stat_status = milena_array_mean_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 5 && requested_axis >= 0) stat_status = milena_array_min_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 6 && requested_axis >= 0) stat_status = milena_array_max_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 7 && requested_axis >= 0) stat_status = milena_array_variance_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 8 && requested_axis >= 0) stat_status = milena_array_std_axis(
+                    &result, &binding->array, requested_axis, requested_keepdims, error);
+                else if (operation == 4) stat_status = milena_array_mean(&result, &binding->array, error);
+                else if (operation == 5) stat_status = milena_array_min(&result, &binding->array, error);
+                else if (operation == 6) stat_status = milena_array_max(&result, &binding->array, error);
+                else if (operation == 7) stat_status = milena_array_variance(&result, &binding->array, error);
                 else stat_status = milena_array_std(&result, &binding->array, error);
                 if (stat_status != MILENA_OK) goto array_cleanup_error;
                 const char *label = operation == 3 ? "sum" : operation == 4 ? "mean" :
@@ -869,9 +893,23 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 if (operation == 3 && result.dtype == MILENA_DTYPE_INT64)
                     printf("%s(%s) = %lld\n", label, name,
                            (long long)*(const int64_t *)milena_array_const_data(&result));
-                else
+                else if (result.size == 1)
                     printf("%s(%s) = %.17g\n", label, name,
                            *(const double *)milena_array_const_data(&result));
+                else {
+                    const double *data = (const double *)milena_array_const_data(&result);
+                    printf("%s(%s) = [", label, name);
+                    for (size_t i = 0; i < result.size; i++) {
+                        if (i) printf(", ");
+                        printf("%.17g", data[i]);
+                    }
+                    printf("] shape=(");
+                    for (size_t i = 0; i < result.ndim; i++) {
+                        if (i) printf(", ");
+                        printf("%zu", result.shape[i]);
+                    }
+                    printf(")\n");
+                }
                 milena_array_release(&result);
             }
             position = name_end + 1;
