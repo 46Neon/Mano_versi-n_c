@@ -546,6 +546,72 @@ static ScriptArrayBinding *find_script_array(ScriptArrayBinding *bindings,
     return NULL;
 }
 
+static MilenaStatus script_scalar_operation(MilenaArray *out,
+                                             const MilenaArray *source,
+                                             char operation, double scalar,
+                                             MilenaError *error) {
+    if (!out || !source || (operation != '+' && operation != '-' &&
+                            operation != '*' && operation != '/')) {
+        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0,
+                         "Operación escalar de array inválida");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (operation == '/' && scalar == 0.0) {
+        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0,
+                         "División de array por cero");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t *shape = source->ndim ? (size_t *)malloc(source->ndim * sizeof(size_t)) : NULL;
+    if (source->ndim && !shape) {
+        milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0, "Sin memoria para shape");
+        return MILENA_ERR_MEMORY;
+    }
+    if (source->ndim) memcpy(shape, source->shape, source->ndim * sizeof(size_t));
+    bool integer_result = source->dtype == MILENA_DTYPE_INT64 &&
+                          operation != '/' && scalar == (double)(int64_t)scalar;
+    MilenaStatus status;
+    if (integer_result) {
+        int64_t *values = (int64_t *)malloc(source->size * sizeof(int64_t));
+        if (!values) { free(shape); return MILENA_ERR_MEMORY; }
+        const int64_t *input = (const int64_t *)milena_array_const_data(source);
+        int64_t value = (int64_t)scalar;
+        for (size_t i = 0; i < source->size; i++) {
+            if (operation == '+') values[i] = input[i] + value;
+            else if (operation == '-') values[i] = input[i] - value;
+            else values[i] = input[i] * value;
+        }
+        status = milena_array_from_i64(out, source->ndim, shape, values, error);
+        free(values);
+    } else {
+        double *values = (double *)malloc(source->size * sizeof(double));
+        if (!values) { free(shape); return MILENA_ERR_MEMORY; }
+        for (size_t i = 0; i < source->size; i++) {
+            double input = source->dtype == MILENA_DTYPE_FLOAT64 ?
+                ((const double *)milena_array_const_data(source))[i] :
+                (double)((const int64_t *)milena_array_const_data(source))[i];
+            if (operation == '+') values[i] = input + scalar;
+            else if (operation == '-') values[i] = input - scalar;
+            else if (operation == '*') values[i] = input * scalar;
+            else values[i] = input / scalar;
+        }
+        status = milena_array_from_f64(out, source->ndim, shape, values, error);
+        free(values);
+    }
+    free(shape);
+    return status;
+}
+
+static void print_array_operation(const char *left, char operation,
+                                  const char *right, const MilenaArray *result) {
+    printf("Operacion %s %c %s: dtype=%s, shape=(", left, operation, right,
+           milena_dtype_name(result->dtype));
+    for (size_t i = 0; i < result->ndim; i++) {
+        if (i) printf(", ");
+        printf("%zu", result->shape[i]);
+    }
+    printf(")\n");
+}
+
 static MilenaStatus run_array_declarations(const char *script, MilenaError *error) {
     const char *cursor = script;
     size_t declarations = 0;
@@ -739,6 +805,56 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
             position = name_end + 1;
         }
     }
+    char *operation_script = milena_strdup(script);
+    if (!operation_script) {
+        milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0, "Sin memoria para operaciones");
+        goto array_cleanup_error;
+    }
+    char *line = strtok(operation_script, "\n\r");
+    while (line) {
+        char left[128], right[128], operation = '\0';
+        if (sscanf(line, " %127s %c %127[^;];", left, &operation, right) == 3 &&
+            (operation == '+' || operation == '-' || operation == '*' || operation == '/')) {
+            char *right_trim = right;
+            while (isspace((unsigned char)*right_trim)) right_trim++;
+            ScriptArrayBinding *left_binding = find_script_array(bindings, binding_count, left);
+            if (left_binding) {
+                ScriptArrayBinding *right_binding = find_script_array(bindings, binding_count, right_trim);
+                MilenaArray result = {0};
+                MilenaStatus operation_status;
+                if (right_binding) {
+                    if (operation != '+') {
+                        milena_error_set(error, MILENA_ERR_UNSUPPORTED, 0, 0, 0,
+                                         "Solo se admite array + array por ahora");
+                        free(operation_script);
+                        goto array_cleanup_error;
+                    }
+                    operation_status = milena_array_add(&result, &left_binding->array,
+                                                        &right_binding->array, error);
+                } else {
+                    char *number_end = NULL;
+                    double scalar = strtod(right_trim, &number_end);
+                    while (number_end && isspace((unsigned char)*number_end)) number_end++;
+                    if (!number_end || number_end == right_trim || *number_end != '\0') {
+                        milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
+                                         "Operando de array inexistente o inválido");
+                        free(operation_script);
+                        goto array_cleanup_error;
+                    }
+                    operation_status = script_scalar_operation(&result, &left_binding->array,
+                                                               operation, scalar, error);
+                }
+                if (operation_status != MILENA_OK) {
+                    free(operation_script);
+                    goto array_cleanup_error;
+                }
+                print_array_operation(left, operation, right_trim, &result);
+                milena_array_release(&result);
+            }
+        }
+        line = strtok(NULL, "\\n\\r");
+    }
+    free(operation_script);
     for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
     free(bindings);
     return MILENA_OK;
