@@ -533,9 +533,24 @@ static MilenaStatus run_sst_commands(const char *script, const Dataset *dataset,
 }
 
 
+typedef struct {
+    char name[128];
+    MilenaArray array;
+} ScriptArrayBinding;
+
+static ScriptArrayBinding *find_script_array(ScriptArrayBinding *bindings,
+                                             size_t count, const char *name) {
+    for (size_t i = 0; i < count; i++) {
+        if (strcmp(bindings[i].name, name) == 0) return &bindings[i];
+    }
+    return NULL;
+}
+
 static MilenaStatus run_array_declarations(const char *script, MilenaError *error) {
     const char *cursor = script;
     size_t declarations = 0;
+    ScriptArrayBinding *bindings = NULL;
+    size_t binding_count = 0;
     while ((cursor = strstr(cursor, "array")) != NULL) {
         const char *name_start = cursor + 5;
         if (*name_start && !isspace((unsigned char)*name_start)) {
@@ -650,16 +665,88 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
         if (status != MILENA_OK) return status;
         printf("Array %s: dtype=%s, shape=(%zu), size=%zu\n", name,
                milena_dtype_name(array.dtype), array.shape[0], array.size);
-        milena_array_release(&array);
+        ScriptArrayBinding *grown = (ScriptArrayBinding *)realloc(
+            bindings, (binding_count + 1) * sizeof(*bindings));
+        if (!grown) {
+            milena_array_release(&array);
+            for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+            free(bindings);
+            milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0,
+                             "No se pudo registrar el array");
+            return MILENA_ERR_MEMORY;
+        }
+        bindings = grown;
+        strcpy(bindings[binding_count].name, name);
+        bindings[binding_count].array = array;
+        memset(&array, 0, sizeof(array));
+        binding_count++;
         declarations++;
         cursor = end + 1;
     }
     if (declarations == 0) {
+        free(bindings);
         milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
                          "No se encontró una declaración de array");
         return MILENA_ERR_PARSE;
     }
+
+    const char *operations[] = {"shape(", "ndim(", "size(", "sum("};
+    for (size_t operation = 0; operation < 4; operation++) {
+        const char *position = script;
+        while ((position = strstr(position, operations[operation])) != NULL) {
+            position += strlen(operations[operation]);
+            const char *name_end = strchr(position, ')');
+            if (!name_end || name_end == position || (size_t)(name_end - position) >= 128) {
+                milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                 "Argumento inválido en operación de array");
+                goto array_cleanup_error;
+            }
+            char name[128];
+            size_t length = (size_t)(name_end - position);
+            memcpy(name, position, length);
+            name[length] = '\0';
+            ScriptArrayBinding *binding = find_script_array(bindings, binding_count, name);
+            if (!binding) {
+                milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
+                                 "Variable de array inexistente");
+                goto array_cleanup_error;
+            }
+            if (operation == 0) {
+                printf("shape(%s) = (", name);
+                for (size_t axis = 0; axis < binding->array.ndim; axis++) {
+                    if (axis) printf(", ");
+                    printf("%zu", binding->array.shape[axis]);
+                }
+                printf(")\n");
+            } else if (operation == 1) {
+                printf("ndim(%s) = %zu\n", name, binding->array.ndim);
+            } else if (operation == 2) {
+                printf("size(%s) = %zu\n", name, binding->array.size);
+            } else {
+                MilenaArray result = {0};
+                MilenaStatus sum_status = milena_array_sum(&result, &binding->array,
+                                                            -1, false, error);
+                if (sum_status != MILENA_OK) goto array_cleanup_error;
+                if (result.dtype == MILENA_DTYPE_INT64) {
+                    printf("sum(%s) = %lld\n", name,
+                           (long long)*(const int64_t *)milena_array_const_data(&result));
+                } else {
+                    printf("sum(%s) = %.17g\n", name,
+                           *(const double *)milena_array_const_data(&result));
+                }
+                milena_array_release(&result);
+            }
+            position = name_end + 1;
+        }
+    }
+    for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+    free(bindings);
     return MILENA_OK;
+
+array_cleanup_error:
+    for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
+    free(bindings);
+    return error && error->code ? error->code : MILENA_ERR_INTERNAL;
 }
 
 MilenaStatus milena_run_script(const char *filename, MilenaError *error) {
