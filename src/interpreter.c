@@ -6,7 +6,11 @@ typedef struct Runtime { Binding *items; size_t count; struct Runtime *parent; u
 static bool rt_value(Runtime*r,const char*n,bool*ok){for(;r;r=r->parent)for(size_t i=r->count;i>0;i--)if(strcmp(r->items[i-1].name,n)==0){*ok=true;return r->items[i-1].value;}*ok=false;return 0;}
 static bool eval_expr(Interpreter*i,ASTNode*n,Runtime*r,double*out);
 static bool invoke(Interpreter*i,ASTNode*f,ASTNode*call,Runtime*parent,double*out){
-    if(!f||f->child_count<2||f->children[0]->child_count!=call->child_count)return false;
+    /* A call always evaluates its arguments in the caller frame, then runs
+     * every statement in a fresh frame.  In particular, do not let a missing
+     * caller frame silently turn a recursive return into zero. */
+    if(!f||!call||!parent||!out||f->child_count<2||
+       f->children[0]->child_count!=call->child_count)return false;
     if(parent->depth>=1000)return false;
     Runtime child={0};child.parent=parent;child.depth=parent->depth+1;size_t pc=f->children[0]->child_count;
     child.items=calloc(pc?pc:1,sizeof(Binding));if(!child.items&&pc)return false;child.count=pc;
