@@ -33,8 +33,6 @@ max(valores);
 variance(valores);
 std(valores);
 median(valores);
-mediana(matriz, eje 0);
-percentil(matriz, 90, eje 1, conservar dimensiones);
 percentile(valores, 90);
 forma(valores);
 dimensiones(valores);
