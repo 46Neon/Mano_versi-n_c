@@ -888,10 +888,15 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 printf("%.*s(%s) = %zu\n", (int)display_length, display_operation, name, binding->array.size);
             } else if (canonical_operation == 9 || canonical_operation == 10) {
                 MilenaArray result = {0};
-                MilenaStatus order_status = canonical_operation == 9 ?
-                    milena_array_median(&result, &binding->array, error) :
-                    milena_array_percentile(&result, &binding->array,
-                                            requested_percentile, error);
+                MilenaStatus order_status;
+                if (requested_axis >= 0)
+                    order_status = canonical_operation == 9 ?
+                        milena_array_median_axis(&result, &binding->array, requested_axis, requested_keepdims, error) :
+                        milena_array_percentile_axis(&result, &binding->array, requested_percentile, requested_axis, requested_keepdims, error);
+                else
+                    order_status = canonical_operation == 9 ?
+                        milena_array_median(&result, &binding->array, error) :
+                        milena_array_percentile(&result, &binding->array, requested_percentile, error);
                 if (order_status != MILENA_OK) goto array_cleanup_error;
                 if (canonical_operation == 9)
                     printf("%.*s(%s) = %.17g\n", (int)display_length,
