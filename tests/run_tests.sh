@@ -28,7 +28,12 @@ array otros = [4, 5, 6];
 array uno = [10];
 array matriz = zeros(2, 3);
 array matriz_dos = zeros(2, 3);
+array fila = zeros(1, 3);
+array columna = zeros(2, 1);
+array tablero = zeros(1, 3);
 matriz + matriz_dos;
+matriz + fila;
+columna + tablero;
 enteros + uno;
 enteros + otros;
 enteros - otros;
@@ -47,6 +52,8 @@ grep -q 'Array uno: dtype=int64, shape=(1), size=1' "$tmp_dir/arrays.out"
 grep -q 'Array matriz: dtype=float64, shape=(2, 3), size=6' "$tmp_dir/arrays.out"
 grep -q 'Array matriz_dos: dtype=float64, shape=(2, 3), size=6' "$tmp_dir/arrays.out"
 grep -q 'Operacion matriz + matriz_dos: dtype=float64, shape=(2, 3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion matriz + fila: dtype=float64, shape=(2, 3)' "$tmp_dir/arrays.out"
+grep -q 'Operacion columna + tablero: dtype=float64, shape=(2, 3)' "$tmp_dir/arrays.out"
 grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
 grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
@@ -111,6 +118,17 @@ if ./milena run "$tmp_dir/array-div-zero.milena" > "$tmp_dir/array-div-zero.out"
     exit 1
 fi
 grep -q 'División por cero' "$tmp_dir/array-div-zero.out"
+
+cat > "$tmp_dir/array-shape-error.milena" <<'MILENA'
+array izquierdo = zeros(2, 2);
+array derecho = zeros(3, 2);
+izquierdo + derecho;
+MILENA
+if ./milena run "$tmp_dir/array-shape-error.milena" > "$tmp_dir/array-shape-error.out" 2>&1; then
+    echo 'Se aceptaron shapes incompatibles' >&2
+    exit 1
+fi
+grep -q 'formas no son compatibles' "$tmp_dir/array-shape-error.out"
 
 cat > "$tmp_dir/clientes.csv" <<'CSV'
 edad,ciudad,canal,visitas,compro
