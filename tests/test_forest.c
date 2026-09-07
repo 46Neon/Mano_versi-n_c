@@ -18,5 +18,19 @@ int main(void) {
     for (size_t i = 0; i < 4; i++) assert(result[i] == labels[i]);
     milena_array_release(&predicted); milena_forest_release(&forest);
     milena_array_release(&target); milena_array_release(&features);
+
+    const double multiclass_values[] = {0, 0, 1, 0, 2, 0};
+    const int64_t multiclass_labels[] = {0, 1, 2};
+    const size_t multiclass_shape[] = {3, 2};
+    const size_t multiclass_label_shape[] = {3};
+    assert(milena_array_from_f64(&features, 2, multiclass_shape, multiclass_values, &error) == MILENA_OK);
+    assert(milena_array_from_i64(&target, 1, multiclass_label_shape, multiclass_labels, &error) == MILENA_OK);
+    milena_forest_init(&forest);
+    assert(milena_forest_train(&forest, &features, &target, 3, &error) == MILENA_OK);
+    assert(milena_forest_predict(&forest, &features, &predicted, &error) == MILENA_OK);
+    result = milena_array_const_data(&predicted);
+    for (size_t i = 0; i < 3; i++) assert(result[i] >= 0 && result[i] <= 2);
+    milena_array_release(&predicted); milena_forest_release(&forest);
+    milena_array_release(&target); milena_array_release(&features);
     puts("OK: Milena forest classifier"); return 0;
 }
