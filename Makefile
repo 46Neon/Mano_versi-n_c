@@ -20,8 +20,8 @@ test-forest: tests/test_forest
 test-arena: tests/test_arena
 	./tests/test_arena
 
-tests/test_arena: tests/test_arena.c src/arena.c src/common.c
-	$(CC) $(CFLAGS) tests/test_arena.c src/arena.c src/common.c $(LDFLAGS) -o $@
+tests/test_arena: tests/test_arena.c src/arena.c src/temp_scope.c src/common.c
+	$(CC) $(CFLAGS) tests/test_arena.c src/arena.c src/temp_scope.c src/common.c $(LDFLAGS) -o $@
 
 tests/test_forest: tests/test_forest.c src/forest.c src/array.c src/common.c
 	$(CC) $(CFLAGS) tests/test_forest.c src/forest.c src/array.c src/common.c $(LDFLAGS) -o $@
