@@ -17,6 +17,11 @@ void parser_error(Parser *parser, const char *msg) {
     parser->has_error = true;
 }
 
+static bool parser_is_name_token(const Parser *parser) {
+    return parser && (parser->current.type == TOKEN_IDENTIFICADOR ||
+                       parser->current.type == TOKEN_KW_TOTAL);
+}
+
 void parser_advance(Parser *parser) {
     parser->previous = parser->current;
     parser->current = lexer_next_token(parser->lexer);
@@ -107,7 +112,7 @@ static ASTNode *parse_expression(Parser *parser) {
     if (parser_match(parser, TOKEN_NUMERO)) {
         parser_advance(parser);
         left = ast_create_number(parser->previous.number_value);
-    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+    } else if (parser_is_name_token(parser)) {
         if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
             parser_error(parser, "La variable usada no ha sido declarada");
             return NULL;
@@ -130,7 +135,7 @@ static ASTNode *parse_expression(Parser *parser) {
         if (parser_match(parser, TOKEN_NUMERO)) {
             parser_advance(parser);
             right = ast_create_number(parser->previous.number_value);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        } else if (parser_is_name_token(parser)) {
             if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
                 ast_destroy(left);
                 parser_error(parser, "La variable usada no ha sido declarada");
@@ -161,7 +166,11 @@ static ASTNode *parse_expression(Parser *parser) {
 
 static ASTNode *parse_variable_declaration(Parser *parser) {
     parser_advance(parser);
-    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
+    if (!parser_is_name_token(parser)) {
+        parser_error(parser, "Se esperaba nombre de variable");
+        return NULL;
+    }
+    parser_advance(parser);
     char name[MAX_TOKEN_LEN];
     strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
@@ -169,7 +178,7 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     if (parser_match(parser, TOKEN_NUMERO)) {
         parser_advance(parser);
         value = ast_create_number(parser->previous.number_value);
-    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+    } else if (parser_is_name_token(parser)) {
         if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
             parser_error(parser, "La variable usada no ha sido declarada"); return NULL;
         }
@@ -183,7 +192,7 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
         if (parser_match(parser, TOKEN_NUMERO)) {
             parser_advance(parser);
             right = ast_create_number(parser->previous.number_value);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        } else if (parser_is_name_token(parser)) {
             if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) { ast_destroy(value); parser_error(parser, "La variable usada no ha sido declarada"); return NULL; }
             right = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
             parser_advance(parser);
@@ -250,7 +259,7 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
              strcmp(parser->current.lexeme, "variable") == 0)) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+        } else if (parser_is_name_token(parser) &&
                    strcmp(parser->current.lexeme, "array") != 0 &&
                    strcmp(parser->current.lexeme, "arreglo") != 0) {
             ASTNode *assignment = parse_assignment(parser);
