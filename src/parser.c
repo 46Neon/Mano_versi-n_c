@@ -24,6 +24,11 @@ bool parser_match(Parser *parser, TokenType type) {
     return parser->current.type == type;
 }
 
+static bool parser_is_identifier(Parser *parser) {
+    return parser_match(parser, TOKEN_IDENTIFICADOR) ||
+           parser_match(parser, TOKEN_KW_TOTAL);
+}
+
 static bool parser_match_lexeme(Parser *parser, TokenType type, const char *lexeme) {
     return parser_match(parser, type) ||
            (parser_match(parser, TOKEN_IDENTIFICADOR) &&
@@ -40,7 +45,7 @@ bool parser_expect(Parser *parser, TokenType type, const char *msg) {
 }
 
 static ASTNode *parse_array_declaration(Parser *parser) {
-    if (!parser || !parser_match(parser, TOKEN_IDENTIFICADOR) ||
+    if (!parser || !parser_is_identifier(parser) ||
         (strcmp(parser->current.lexeme, "array") != 0 &&
          strcmp(parser->current.lexeme, "arreglo") != 0)) return NULL;
     parser_advance(parser);
@@ -111,7 +116,7 @@ static ASTNode *parse_expression(Parser *parser) {
     if (parser_match(parser, TOKEN_NUMERO)) {
         parser_advance(parser);
         left = ast_create_number(parser->previous.number_value);
-    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+    } else if (parser_is_identifier(parser)) {
         if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
             parser_error(parser, "La variable usada no ha sido declarada");
             return NULL;
@@ -134,7 +139,7 @@ static ASTNode *parse_expression(Parser *parser) {
         if (parser_match(parser, TOKEN_NUMERO)) {
             parser_advance(parser);
             right = ast_create_number(parser->previous.number_value);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        } else if (parser_is_identifier(parser)) {
             if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
                 ast_destroy(left);
                 parser_error(parser, "La variable usada no ha sido declarada");
@@ -238,12 +243,12 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
         if (parser_match_lexeme(parser, TOKEN_KW_VARIABLE, "variable")) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+        } else if (parser_is_identifier(parser) &&
                    strcmp(parser->current.lexeme, "array") != 0 &&
                    strcmp(parser->current.lexeme, "arreglo") != 0) {
             ASTNode *assignment = parse_assignment(parser);
             if (assignment) ast_add_child(node, assignment);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+        } else if (parser_is_identifier(parser) &&
             (strcmp(parser->current.lexeme, "array") == 0 ||
              strcmp(parser->current.lexeme, "arreglo") == 0)) {
             ASTNode *declaration = parse_array_declaration(parser);
@@ -348,7 +353,7 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
                 }
             } else {
                 // Otros bloques
-                if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+                if (parser_is_identifier(parser)) {
                     parser_advance(parser);
                     if (parser_match(parser, TOKEN_LLAVE_IZQ)) {
                         parser_advance(parser);
