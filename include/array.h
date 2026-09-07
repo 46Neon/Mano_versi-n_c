@@ -104,6 +104,16 @@ MilenaStatus milena_array_divide(MilenaArray *out, const MilenaArray *left,
                                  const MilenaArray *right, MilenaError *error);
 MilenaStatus milena_array_sum(MilenaArray *out, const MilenaArray *source,
                               int axis, bool keepdims, MilenaError *error);
+MilenaStatus milena_array_mean(MilenaArray *out, const MilenaArray *source,
+                               MilenaError *error);
+MilenaStatus milena_array_min(MilenaArray *out, const MilenaArray *source,
+                              MilenaError *error);
+MilenaStatus milena_array_max(MilenaArray *out, const MilenaArray *source,
+                              MilenaError *error);
+MilenaStatus milena_array_variance(MilenaArray *out, const MilenaArray *source,
+                                   MilenaError *error);
+MilenaStatus milena_array_std(MilenaArray *out, const MilenaArray *source,
+                              MilenaError *error);
 
 bool milena_array_is_contiguous(const MilenaArray *array);
 void *milena_array_data(MilenaArray *array);
