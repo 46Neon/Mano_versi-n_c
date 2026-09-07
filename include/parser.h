@@ -4,6 +4,7 @@
 #include "common.h"
 #include "lexer.h"
 #include "ast.h"
+#include "symbol_table.h"
 
 typedef struct Parser {
     Lexer *lexer;
@@ -11,6 +12,7 @@ typedef struct Parser {
     Token previous;
     bool has_error;
     MilenaErrorInfo error;
+    MilenaSymbolTable symbols;
 } Parser;
 
 void parser_init(Parser *parser, Lexer *lexer);
