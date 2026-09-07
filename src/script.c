@@ -812,11 +812,28 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
     }
     char *line = strtok(operation_script, "\n\r");
     while (line) {
-        char left[128], right[128], operation = '\0';
-        if (sscanf(line, " %127s %c %127[^;];", left, &operation, right) == 3 &&
-            (operation == '+' || operation == '-' || operation == '*' || operation == '/')) {
+        char left[128] = {0}, right[128] = {0}, operation = '\0';
+        char *operator_position = strpbrk(line, "+-*/");
+        if (operator_position && operator_position > line &&
+            sscanf(operator_position, "%c", &operation) == 1) {
+            char *left_start = line;
+            while (isspace((unsigned char)*left_start)) left_start++;
+            char *left_end = operator_position;
+            while (left_end > left_start && isspace((unsigned char)left_end[-1])) left_end--;
+            size_t left_length = (size_t)(left_end - left_start);
+            if (left_length >= sizeof(left)) left_length = sizeof(left) - 1;
+            memcpy(left, left_start, left_length);
+            left[left_length] = '\0';
+            char *right_start = operator_position + 1;
+            while (isspace((unsigned char)*right_start)) right_start++;
+            char *right_end = strchr(right_start, ';');
+            if (!right_end) right_end = right_start + strlen(right_start);
+            while (right_end > right_start && isspace((unsigned char)right_end[-1])) right_end--;
+            size_t right_length = (size_t)(right_end - right_start);
+            if (right_length >= sizeof(right)) right_length = sizeof(right) - 1;
+            memcpy(right, right_start, right_length);
+            right[right_length] = '\0';
             char *right_trim = right;
-            while (isspace((unsigned char)*right_trim)) right_trim++;
             ScriptArrayBinding *left_binding = find_script_array(bindings, binding_count, left);
             if (left_binding) {
                 ScriptArrayBinding *right_binding = find_script_array(bindings, binding_count, right_trim);
