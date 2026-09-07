@@ -117,7 +117,8 @@ const char* ast_type_name(ASTNodeType type) {
         "COMANDO_TOTAL",
         "COMANDO_PERIODO",
         "AGRUPACION_POR",
-        "RESUMEN_METRICA"
+        "RESUMEN_METRICA",
+        "OPERACION_ESTADISTICA"
     };
     size_t count = sizeof(names) / sizeof(names[0]);
     if ((size_t)type >= count) return "DESCONOCIDO";
