@@ -782,8 +782,8 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
         return MILENA_ERR_PARSE;
     }
 
-    const char *operations[] = {"shape(", "ndim(", "size(", "sum(", "mean(", "min(", "max(", "variance(", "std("};
-    for (size_t operation = 0; operation < 9; operation++) {
+    const char *operations[] = {"shape(", "ndim(", "size(", "sum(", "mean(", "min(", "max(", "variance(", "std(", "median(", "percentile("};
+    for (size_t operation = 0; operation < 11; operation++) {
         const char *position = script;
         while ((position = strstr(position, operations[operation])) != NULL) {
             position += strlen(operations[operation]);
@@ -794,9 +794,28 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 goto array_cleanup_error;
             }
             char name[128];
+            double requested_percentile = 50.0;
             size_t length = (size_t)(name_end - position);
             memcpy(name, position, length);
             name[length] = '\0';
+            if (operation == 10) {
+                char *comma = strchr(name, ',');
+                if (!comma) {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "percentile requiere array y porcentaje");
+                    goto array_cleanup_error;
+                }
+                *comma++ = '\0';
+                while (isspace((unsigned char)*comma)) comma++;
+                char *percentile_end = NULL;
+                requested_percentile = strtod(comma, &percentile_end);
+                while (percentile_end && isspace((unsigned char)*percentile_end)) percentile_end++;
+                if (!percentile_end || percentile_end == comma || *percentile_end != '\0') {
+                    milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
+                                     "Porcentaje inválido");
+                    goto array_cleanup_error;
+                }
+            }
             ScriptArrayBinding *binding = find_script_array(bindings, binding_count, name);
             if (!binding) {
                 milena_error_set(error, MILENA_ERR_DATA, 0, 0, 0,
@@ -814,6 +833,21 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 printf("ndim(%s) = %zu\n", name, binding->array.ndim);
             } else if (operation == 2) {
                 printf("size(%s) = %zu\n", name, binding->array.size);
+            } else if (operation == 9 || operation == 10) {
+                MilenaArray result = {0};
+                MilenaStatus order_status = operation == 9 ?
+                    milena_array_median(&result, &binding->array, error) :
+                    milena_array_percentile(&result, &binding->array,
+                                            requested_percentile, error);
+                if (order_status != MILENA_OK) goto array_cleanup_error;
+                if (operation == 9)
+                    printf("median(%s) = %.17g\n", name,
+                           *(const double *)milena_array_const_data(&result));
+                else
+                    printf("percentile(%s, %.17g) = %.17g\n", name,
+                           requested_percentile,
+                           *(const double *)milena_array_const_data(&result));
+                milena_array_release(&result);
             } else {
                 MilenaArray result = {0};
                 MilenaStatus stat_status;
