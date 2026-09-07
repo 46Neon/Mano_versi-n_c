@@ -795,6 +795,8 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
         "forma(", "dimensiones(", "tamaño(", "suma(", "media(", "minimo(", "maximo(", "varianza(", "desviacion_estandar(", "mediana(", "percentil("};
     for (size_t operation = 0; operation < 22; operation++) {
         size_t canonical_operation = operation >= 11 ? operation - 11 : operation;
+        const char *display_operation = operations[operation];
+        size_t display_length = strlen(display_operation) - 1;
         const char *position = script;
         while ((position = strstr(position, operations[operation])) != NULL) {
             position += strlen(operations[operation]);
@@ -864,16 +866,16 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 goto array_cleanup_error;
             }
             if (canonical_operation == 0) {
-                printf("shape(%s) = (", name);
+                printf("%.*s(%s) = (", (int)display_length, display_operation, name);
                 for (size_t axis = 0; axis < binding->array.ndim; axis++) {
                     if (axis) printf(", ");
                     printf("%zu", binding->array.shape[axis]);
                 }
                 printf(")\n");
             } else if (canonical_operation == 1) {
-                printf("ndim(%s) = %zu\n", name, binding->array.ndim);
+                printf("%.*s(%s) = %zu\n", (int)display_length, display_operation, name, binding->array.ndim);
             } else if (canonical_operation == 2) {
-                printf("size(%s) = %zu\n", name, binding->array.size);
+                printf("%.*s(%s) = %zu\n", (int)display_length, display_operation, name, binding->array.size);
             } else if (canonical_operation == 9 || canonical_operation == 10) {
                 MilenaArray result = {0};
                 MilenaStatus order_status = canonical_operation == 9 ?
