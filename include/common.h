@@ -12,7 +12,7 @@
 #include <float.h>
 #include <math.h>
 
-#define MILENA_VERSION "0.2.0-identity"
+#define MILENA_VERSION "0.1.1"
 #define MILENA_ERROR_TEXT 512
 
 typedef enum {
