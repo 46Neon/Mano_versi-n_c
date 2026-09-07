@@ -243,6 +243,28 @@ static void test_sum_by_axis(void) {
     milena_array_release(&array);
 }
 
+static void test_order_statistics_by_axis(void) {
+    const size_t shape[] = {3, 3};
+    const int64_t values[] = {1, 4, 7, 2, 5, 8, 3, 6, 9};
+    const double expected_median_axis0[] = {2, 5, 8};
+    const double expected_percentile_axis1[] = {4, 5, 6};
+    MilenaArray array = {0}, median = {0}, percentile = {0};
+    MilenaError error;
+    milena_error_clear(&error);
+    expect_ok(milena_array_from_i64(&array, 2, shape, values, &error), &error);
+    expect_ok(milena_array_median_axis(&median, &array, 0, false, &error), &error);
+    assert(median.ndim == 1 && median.shape[0] == 3);
+    assert(memcmp(milena_array_const_data(&median), expected_median_axis0,
+                  sizeof(expected_median_axis0)) == 0);
+    expect_ok(milena_array_percentile_axis(&percentile, &array, 50.0, 1, true, &error), &error);
+    assert(percentile.ndim == 2 && percentile.shape[0] == 3 && percentile.shape[1] == 1);
+    assert(memcmp(milena_array_const_data(&percentile), expected_percentile_axis1,
+                  sizeof(expected_percentile_axis1)) == 0);
+    milena_array_release(&percentile);
+    milena_array_release(&median);
+    milena_array_release(&array);
+}
+
 int main(void) {
     test_dtypes_and_casts();
     test_creation_and_reshape();
@@ -251,6 +273,7 @@ int main(void) {
     test_transpose_and_reshape_copy();
     test_boolean_masks_and_where();
     test_sum_by_axis();
+    test_order_statistics_by_axis();
     puts("OK: MilenaArray creation, views, broadcasting and reductions");
     return 0;
 }
