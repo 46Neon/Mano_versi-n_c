@@ -790,65 +790,117 @@ static void increment_coordinates(size_t *coordinates, size_t ndim,
     }
 }
 
-MilenaStatus milena_array_add(MilenaArray *out, const MilenaArray *left,
-                              const MilenaArray *right, MilenaError *error) {
+static bool checked_mul_i64(int64_t left, int64_t right, int64_t *out) {
+    if (left == 0 || right == 0) { *out = 0; return true; }
+    if (left == -1 && right == INT64_MIN) return false;
+    if (right == -1 && left == INT64_MIN) return false;
+    if (left > 0) {
+        if (right > 0 && left > INT64_MAX / right) return false;
+        if (right < 0 && right < INT64_MIN / left) return false;
+    } else {
+        if (right > 0 && left < INT64_MIN / right) return false;
+        if (right < 0 && left < INT64_MAX / right) return false;
+    }
+    *out = left * right;
+    return true;
+}
+
+static bool checked_binary_i64(int64_t left, int64_t right, char operation,
+                               int64_t *out) {
+    if (operation == '+') {
+        if ((right > 0 && left > INT64_MAX - right) ||
+            (right < 0 && left < INT64_MIN - right)) return false;
+        *out = left + right;
+        return true;
+    }
+    if (operation == '-') {
+        if ((right < 0 && left > INT64_MAX + right) ||
+            (right > 0 && left < INT64_MIN + right)) return false;
+        *out = left - right;
+        return true;
+    }
+    if (operation == '*') return checked_mul_i64(left, right, out);
+    if (right == 0 || (left == INT64_MIN && right == -1)) return false;
+    *out = left / right;
+    return true;
+}
+
+static MilenaStatus array_binary_operation(MilenaArray *out,
+                                           const MilenaArray *left,
+                                           const MilenaArray *right,
+                                           char operation, MilenaError *error) {
     if (!out || !left || !right || !left->storage || !right->storage ||
         left->dtype != right->dtype) {
-        array_error(error, MILENA_ERR_TYPE, "La suma requiere arrays válidos del mismo dtype");
+        array_error(error, MILENA_ERR_TYPE, "Los arrays deben tener el mismo dtype");
         return MILENA_ERR_TYPE;
     }
     if (left->dtype != MILENA_DTYPE_FLOAT64 && left->dtype != MILENA_DTYPE_INT64) {
-        array_error(error, MILENA_ERR_UNSUPPORTED, "La suma aún no está implementada para este dtype");
+        array_error(error, MILENA_ERR_UNSUPPORTED, "La operación aún no está implementada para este dtype");
         return MILENA_ERR_UNSUPPORTED;
     }
-
     size_t ndim = 0;
     size_t *shape = NULL;
     MilenaStatus status = broadcast_shape(&ndim, &shape, left, right, error);
     if (status != MILENA_OK) return status;
     status = allocate_array(out, left->dtype, ndim, shape, error);
-    if (status != MILENA_OK) {
-        free(shape);
-        return status;
-    }
-
-    size_t *coordinates = ndim > 0 ? (size_t *)calloc(ndim, sizeof(size_t)) : NULL;
-    if (ndim > 0 && !coordinates) {
-        free(shape);
-        milena_array_release(out);
-        array_error(error, MILENA_ERR_MEMORY, "No se pudieron reservar coordenadas broadcast");
+    if (status != MILENA_OK) { free(shape); return status; }
+    size_t *coordinates = ndim ? (size_t *)calloc(ndim, sizeof(size_t)) : NULL;
+    if (ndim && !coordinates) {
+        free(shape); milena_array_release(out);
+        array_error(error, MILENA_ERR_MEMORY, "Sin memoria para broadcasting");
         return MILENA_ERR_MEMORY;
     }
-
     for (size_t index = 0; index < out->size; index++) {
         ptrdiff_t left_offset = element_offset(left, coordinates, ndim);
         ptrdiff_t right_offset = element_offset(right, coordinates, ndim);
         ptrdiff_t output_offset = (ptrdiff_t)out->byte_offset +
                                   (ptrdiff_t)(index * out->itemsize);
         if (left->dtype == MILENA_DTYPE_FLOAT64) {
-            const double *left_data = (const double *)(left->storage->data + left_offset);
-            const double *right_data = (const double *)(right->storage->data + right_offset);
-            double *output_data = (double *)(out->storage->data + output_offset);
-            *output_data = *left_data + *right_data;
-        } else {
-            const int64_t *left_data = (const int64_t *)(left->storage->data + left_offset);
-            const int64_t *right_data = (const int64_t *)(right->storage->data + right_offset);
-            int64_t *output_data = (int64_t *)(out->storage->data + output_offset);
-            if ((*right_data > 0 && *left_data > INT64_MAX - *right_data) ||
-                (*right_data < 0 && *left_data < INT64_MIN - *right_data)) {
-                free(coordinates);
-                free(shape);
-                milena_array_release(out);
-                array_error(error, MILENA_ERR_OVERFLOW, "Suma int64 fuera de rango");
-                return MILENA_ERR_OVERFLOW;
+            double a = *(const double *)(left->storage->data + left_offset);
+            double b = *(const double *)(right->storage->data + right_offset);
+            double *result = (double *)(out->storage->data + output_offset);
+            if (operation == '+') *result = a + b;
+            else if (operation == '-') *result = a - b;
+            else if (operation == '*') *result = a * b;
+            else {
+                if (b == 0.0) { free(coordinates); free(shape); milena_array_release(out); array_error(error, MILENA_ERR_ARGUMENT, "División por cero"); return MILENA_ERR_ARGUMENT; }
+                *result = a / b;
             }
-            *output_data = *left_data + *right_data;
+        } else {
+            int64_t a = *(const int64_t *)(left->storage->data + left_offset);
+            int64_t b = *(const int64_t *)(right->storage->data + right_offset);
+            int64_t result;
+            if (!checked_binary_i64(a, b, operation, &result)) {
+                free(coordinates); free(shape); milena_array_release(out);
+                array_error(error, operation == '/' && b == 0 ? MILENA_ERR_ARGUMENT : MILENA_ERR_OVERFLOW,
+                            operation == '/' && b == 0 ? "División por cero" : "Operación int64 fuera de rango");
+                return error ? error->code : MILENA_ERR_OVERFLOW;
+            }
+            *(int64_t *)(out->storage->data + output_offset) = result;
         }
-        if (ndim > 0) increment_coordinates(coordinates, ndim, shape);
+        if (ndim) increment_coordinates(coordinates, ndim, shape);
     }
-    free(coordinates);
-    free(shape);
-    return MILENA_OK;
+    free(coordinates); free(shape); return MILENA_OK;
+}
+
+MilenaStatus milena_array_add(MilenaArray *out, const MilenaArray *left,
+                              const MilenaArray *right, MilenaError *error) {
+    return array_binary_operation(out, left, right, '+', error);
+}
+
+MilenaStatus milena_array_subtract(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error) {
+    return array_binary_operation(out, left, right, '-', error);
+}
+
+MilenaStatus milena_array_multiply(MilenaArray *out, const MilenaArray *left,
+                                   const MilenaArray *right, MilenaError *error) {
+    return array_binary_operation(out, left, right, '*', error);
+}
+
+MilenaStatus milena_array_divide(MilenaArray *out, const MilenaArray *left,
+                                 const MilenaArray *right, MilenaError *error) {
+    return array_binary_operation(out, left, right, '/', error);
 }
 
 MilenaStatus milena_array_sum(MilenaArray *out, const MilenaArray *source,
