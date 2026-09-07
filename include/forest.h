@@ -6,8 +6,8 @@
 typedef struct {
     size_t feature;
     double threshold;
-    int left_class;
-    int right_class;
+    int64_t left_class;
+    int64_t right_class;
 } MilenaDecisionStump;
 
 typedef struct {
