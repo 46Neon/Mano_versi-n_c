@@ -114,6 +114,10 @@ MilenaStatus milena_array_variance(MilenaArray *out, const MilenaArray *source,
                                    MilenaError *error);
 MilenaStatus milena_array_std(MilenaArray *out, const MilenaArray *source,
                               MilenaError *error);
+MilenaStatus milena_array_median(MilenaArray *out, const MilenaArray *source,
+                                 MilenaError *error);
+MilenaStatus milena_array_percentile(MilenaArray *out, const MilenaArray *source,
+                                     double percentile, MilenaError *error);
 
 bool milena_array_is_contiguous(const MilenaArray *array);
 void *milena_array_data(MilenaArray *array);
