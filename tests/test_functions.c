@@ -13,7 +13,7 @@ int main(void) {
         "variable resultado = factorial(5); variable positivo = signo(3);";
     Lexer l; Parser p; lexer_init(&l, src); parser_init(&p, &l);
     ASTNode *tree = parser_parse(&p);
-    assert(tree && !p.has_error);
+    fprintf(stderr, "DBG tree=%p error=%d msg=%s current=%d lex=%s\n", (void*)tree, p.has_error, p.error.message, p.current.type, p.current.lexeme); assert(tree && !p.has_error);
     Interpreter vm; assert(interpreter_init(&vm, tree));
     assert(interpreter_run(&vm));
     double result = 0.0, positive = 0.0;
