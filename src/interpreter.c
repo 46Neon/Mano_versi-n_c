@@ -13,10 +13,15 @@ static bool invoke(Interpreter*i,ASTNode*f,ASTNode*call,Runtime*parent,double*ou
     for(size_t k=0;k<pc;k++){double v;if(!eval_expr(i,call->children[k],parent,&v))goto fail;child.items[k].name=milena_strdup(f->children[0]->children[k]->value);if(!child.items[k].name)goto fail;child.items[k].value=v;}
     for(size_t k=0;k<f->children[1]->child_count;k++){ASTNode*x=f->children[1]->children[k];
         if(x->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,x->children[0],&child,out))goto fail;goto done;}
-        if(x->type==AST_CONDICION_SI){double c;if(!eval_expr(i,x->children[0],&child,&c))goto fail;size_t begin=c?1:x->child_count;
-            if(!c&&x->child_count>1&&x->children[x->child_count-1]->type==AST_BLOQUE_FUNCION){ASTNode*eb=x->children[x->child_count-1];for(size_t j=0;j<eb->child_count;j++){ASTNode*y=eb->children[j];if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}}} }
-            else if(c) begin=1;
-            if(c){for(size_t j=begin;j<x->child_count;j++){ASTNode*y=x->children[j];if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}}}
+        if(x->type==AST_CONDICION_SI){
+            double c;if(!eval_expr(i,x->children[0],&child,&c))goto fail;
+            ASTNode *branch=NULL; size_t begin=0, branch_count=0;
+            if(c){branch=x;begin=1;branch_count=x->child_count;}
+            else if(x->child_count>1&&x->children[x->child_count-1]->type==AST_BLOQUE_FUNCION){branch=x->children[x->child_count-1];branch_count=branch->child_count;}
+            if(branch) for(size_t j=begin;j<branch_count;j++){ASTNode*y=branch->children[j];
+                if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}
+                if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}
+            }
         } else if(x->type==AST_DECLARACION_VARIABLE||x->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,x->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(x->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}
     }
     *out=0;
