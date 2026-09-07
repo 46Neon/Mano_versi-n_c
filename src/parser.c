@@ -25,8 +25,14 @@ bool parser_match(Parser *parser, TokenType type) {
 }
 
 static bool parser_is_identifier(Parser *parser) {
+    if (!parser) return false;
+    /* Names remain usable when the lexer classifies a reserved word as a
+       keyword.  `total` is part of the language vocabulary but is also a
+       valid variable name in existing scripts. */
     return parser_match(parser, TOKEN_IDENTIFICADOR) ||
-           parser_match(parser, TOKEN_KW_TOTAL);
+           parser_match(parser, TOKEN_KW_TOTAL) ||
+           (parser->current.lexeme[0] != '\0' &&
+            strcmp(parser->current.lexeme, "total") == 0);
 }
 
 static bool parser_match_lexeme(Parser *parser, TokenType type, const char *lexeme) {
