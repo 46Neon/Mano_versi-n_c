@@ -41,9 +41,9 @@ static bool is_keyword(const char *str) {
         "extraer", "total", "periodo", "verdadero", "falso",
         "forma", "dimensiones", "tamaño", "suma", "media", "minimo",
         "maximo", "varianza", "desviacion_estandar", "mediana", "percentil",
-        "eje", "conservar"
+        "eje", "conservar", "variable"
     };
-    static const int num_keywords = 33;
+    static const int num_keywords = 34;
     
     for (int i = 0; i < num_keywords; i++) {
         if (strcmp(str, keywords[i]) == 0) return true;
@@ -83,6 +83,7 @@ static TokenType keyword_type(const char *str) {
     if (strcmp(str, "percentil") == 0) return TOKEN_FUNCION_PERCENTIL;
     if (strcmp(str, "eje") == 0) return TOKEN_CONCEPTO_EJE;
     if (strcmp(str, "conservar") == 0) return TOKEN_CONCEPTO_CONSERVAR;
+    if (strcmp(str, "variable") == 0) return TOKEN_KW_VARIABLE;
     if (strcmp(str, "verdadero") == 0 || strcmp(str, "falso") == 0) return TOKEN_BOOLEANO;
     return TOKEN_IDENTIFICADOR;
 }
@@ -424,7 +425,7 @@ const char *token_type_name(TokenType type) {
         "FUNCION_FORMA", "FUNCION_DIMENSIONES", "FUNCION_TAMANO", "FUNCION_SUMA",
         "FUNCION_MEDIA", "FUNCION_MINIMO", "FUNCION_MAXIMO", "FUNCION_VARIANZA",
         "FUNCION_DESVIACION", "FUNCION_MEDIANA", "FUNCION_PERCENTIL", "CONCEPTO_EJE",
-        "CONCEPTO_CONSERVAR", "CONCEPTO_DIMENSIONES",
+        "CONCEPTO_CONSERVAR", "CONCEPTO_DIMENSIONES", "VARIABLE",
         "PUNTO", "NUMERAL", "LLAVE_IZQ", "LLAVE_DER", "PAR_IZQ", "PAR_DER",
         "CORCHETE_IZQ", "CORCHETE_DER", "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
         "IGUAL", "IGUAL_IGUAL", "DISTINTO", "MAYOR", "MAYOR_IGUAL",
