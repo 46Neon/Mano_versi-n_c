@@ -6,6 +6,8 @@ $OutputDir = Join-Path $Root 'dist/windows'
 $Output = Join-Path $OutputDir 'milena.exe'
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+& (Join-Path $PSScriptRoot 'array-link-smoke.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Falló el smoke test de portabilidad de MilenaArray' }
 $SourceNames = @(
     'analysis.c', 'array.c', 'common.c', 'dataset.c', 'logger.c', 'main.c', 'metrics.c',
     'schema.c', 'script.c', 'sst_advanced.c', 'sst_contingency.c',
