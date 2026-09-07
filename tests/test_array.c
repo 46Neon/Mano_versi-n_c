@@ -249,10 +249,10 @@ static void test_memory_ownership(void) {
     MilenaArray source = {0}, view = {0}, result = {0}, empty = {0};
     MilenaError error; milena_error_clear(&error);
     expect_ok(milena_array_from_i64(&source, 1, shape, values, &error), &error);
+    expect_ok(milena_array_slice_view(&view, &source, 0, 1, 3, 1, &error), &error);
     milena_array_retain(&source);
     milena_array_release(&source);
-    assert(source.storage != NULL);
-    expect_ok(milena_array_slice_view(&view, &source, 0, 1, 3, 1, &error), &error);
+    assert(source.storage == NULL);
     milena_array_release(&source);
     assert(view.size == 2);
     assert(((const int64_t *)milena_array_const_data(&view))[0] == 2);
