@@ -9,6 +9,11 @@ void parser_init(Parser *parser, Lexer *lexer) {
     milena_symbols_init(&parser->symbols);
 }
 
+void parser_release(Parser *parser) {
+    if (!parser) return;
+    milena_symbols_release(&parser->symbols);
+}
+
 void parser_error(Parser *parser, const char *msg) {
     milena_error_set(&parser->error, MILENA_ERR_PARSE,
                      parser->current.line, parser->current.column, 0, msg);
@@ -94,6 +99,12 @@ static ASTNode *parse_array_declaration(Parser *parser) {
     if (!declaration) {
         ast_destroy(array);
         parser_error(parser, "No se pudo crear la declaración del array");
+        return NULL;
+    }
+    if (milena_symbols_declare(&parser->symbols, name, &parser->error) != MILENA_OK) {
+        ast_destroy(declaration);
+        ast_destroy(array);
+        parser->has_error = true;
         return NULL;
     }
     ast_add_child(declaration, array);
@@ -360,26 +371,31 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
 }
 
 ASTNode* parser_parse(Parser *parser) {
+    if (!parser) return NULL;
     ASTNode *program = ast_create(AST_PROGRAMA);
     if (!program) {
         parser_error(parser, "Error de memoria");
         return NULL;
     }
-    
+
+    /* A program may contain a sequence of top-level statistical calls. */
     if (parser->current.type == TOKEN_FUNCION_MEDIANA ||
         parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-        ASTNode *statistic = parser_parse_statistical_call(parser);
-        if (statistic) ast_add_child(program, statistic);
-        if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
+        while (parser->current.type == TOKEN_FUNCION_MEDIANA ||
+               parser->current.type == TOKEN_FUNCION_PERCENTIL) {
+            ASTNode *statistic = parser_parse_statistical_call(parser);
+            if (!statistic) break;
+            ast_add_child(program, statistic);
+            if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
+        }
     } else {
         ASTNode *analisis = parse_bloque_analisis(parser);
         if (analisis) ast_add_child(program, analisis);
     }
-    
+
     if (!parser_match(parser, TOKEN_EOF)) {
         parser_error(parser, "Se esperaba fin de archivo");
     }
-    
     return program;
 }
 
