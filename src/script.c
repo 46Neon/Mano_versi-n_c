@@ -853,7 +853,7 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 milena_array_release(&result);
             }
         }
-        line = strtok(NULL, "\\n\\r");
+        line = strtok(NULL, "\n\r");
     }
     free(operation_script);
     for (size_t i = 0; i < binding_count; i++) milena_array_release(&bindings[i].array);
