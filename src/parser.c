@@ -105,9 +105,18 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
     char name[MAX_TOKEN_LEN];
     strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
-    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable") ||
-        !parser_expect(parser, TOKEN_NUMERO, "La variable necesita una expresión numérica")) return NULL;
-    ASTNode *value = ast_create_number(parser->previous.number_value);
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
+    ASTNode *value = NULL;
+    if (parser_match(parser, TOKEN_NUMERO)) {
+        parser_advance(parser);
+        value = ast_create_number(parser->previous.number_value);
+    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
+            parser_error(parser, "La variable usada no ha sido declarada"); return NULL;
+        }
+        value = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
+        parser_advance(parser);
+    } else { parser_error(parser, "La variable necesita una expresión numérica"); return NULL; }
     if ((parser_match(parser, TOKEN_MAS) || parser_match(parser, TOKEN_MENOS)) && value) {
         TokenType operator_type = parser->current.type;
         parser_advance(parser);
