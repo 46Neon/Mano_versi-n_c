@@ -1153,3 +1153,76 @@ MilenaStatus milena_array_median(MilenaArray *out, const MilenaArray *source,
                                  MilenaError *error) {
     return milena_array_percentile(out, source, 50.0, error);
 }
+
+static MilenaStatus array_stat_axis(MilenaArray *out, const MilenaArray *source,
+                                     int axis, bool keepdims, char statistic,
+                                     MilenaError *error) {
+    if (!out || !source || !source->storage || source->size == 0 ||
+        (source->dtype != MILENA_DTYPE_INT64 && source->dtype != MILENA_DTYPE_FLOAT64)) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Array inválido para reducción por eje");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (axis < 0) return array_stat_value(out, source, statistic, error);
+    if ((size_t)axis >= source->ndim) {
+        array_error(error, MILENA_ERR_ARGUMENT, "Eje fuera de rango");
+        return MILENA_ERR_ARGUMENT;
+    }
+    size_t output_ndim = keepdims ? source->ndim : source->ndim - 1;
+    size_t *shape = output_ndim ? (size_t *)calloc(output_ndim, sizeof(size_t)) : NULL;
+    if (output_ndim && !shape) return MILENA_ERR_MEMORY;
+    size_t j = 0;
+    for (size_t i = 0; i < source->ndim; i++) {
+        if (i == (size_t)axis) { if (keepdims) shape[j++] = 1; }
+        else shape[j++] = source->shape[i];
+    }
+    MilenaStatus status = milena_array_zeros(out, MILENA_DTYPE_FLOAT64, output_ndim, shape, error);
+    free(shape);
+    if (status != MILENA_OK) return status;
+    size_t *source_coords = source->ndim ? calloc(source->ndim, sizeof(size_t)) : NULL;
+    size_t *output_coords = output_ndim ? calloc(output_ndim, sizeof(size_t)) : NULL;
+    if ((source->ndim && !source_coords) || (output_ndim && !output_coords)) {
+        free(source_coords); free(output_coords); milena_array_release(out);
+        return MILENA_ERR_MEMORY;
+    }
+    double *output = (double *)milena_array_data(out);
+    for (size_t index = 0; index < out->size; index++) {
+        if (output_ndim) linear_coordinates(out, index, output_coords);
+        j = 0;
+        for (size_t i = 0; i < source->ndim; i++) {
+            if (i == (size_t)axis) source_coords[i] = 0;
+            else source_coords[i] = output_coords[j++];
+        }
+        size_t count = source->shape[axis];
+        double first = 0.0, mean = 0.0;
+        for (size_t k = 0; k < count; k++) {
+            source_coords[axis] = k;
+            double value = source->dtype == MILENA_DTYPE_INT64 ?
+                (double)*(const int64_t *)(source->storage->data + element_offset(source, source_coords, source->ndim)) :
+                *(const double *)(source->storage->data + element_offset(source, source_coords, source->ndim));
+            if (k == 0 || (statistic == 'n' && value < first) || (statistic == 'x' && value > first)) first = value;
+            mean += value;
+        }
+        mean /= (double)count;
+        if (statistic == 'm') output[index] = mean;
+        else if (statistic == 'n' || statistic == 'x') output[index] = first;
+        else {
+            double sum = 0.0;
+            for (size_t k = 0; k < count; k++) {
+                source_coords[axis] = k;
+                double value = source->dtype == MILENA_DTYPE_INT64 ?
+                    (double)*(const int64_t *)(source->storage->data + element_offset(source, source_coords, source->ndim)) :
+                    *(const double *)(source->storage->data + element_offset(source, source_coords, source->ndim));
+                double delta = value - mean; sum += delta * delta;
+            }
+            output[index] = sum / (double)count;
+            if (statistic == 's') output[index] = sqrt(output[index]);
+        }
+    }
+    free(source_coords); free(output_coords); return MILENA_OK;
+}
+
+MilenaStatus milena_array_mean_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'm', error); }
+MilenaStatus milena_array_min_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'n', error); }
+MilenaStatus milena_array_max_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'x', error); }
+MilenaStatus milena_array_variance_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 'v', error); }
+MilenaStatus milena_array_std_axis(MilenaArray *out, const MilenaArray *source, int axis, bool keepdims, MilenaError *error) { return array_stat_axis(out, source, axis, keepdims, 's', error); }
