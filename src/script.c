@@ -835,14 +835,24 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 if (comma) {
                     *comma++ = '\0';
                     while (isspace((unsigned char)*comma)) comma++;
+                    if (strncmp(comma, "eje", 3) == 0 &&
+                        isspace((unsigned char)comma[3])) {
+                        comma += 3;
+                        while (isspace((unsigned char)*comma)) comma++;
+                    }
                     char *axis_end = NULL;
                     long parsed_axis = strtol(comma, &axis_end, 10);
                     while (axis_end && isspace((unsigned char)*axis_end)) axis_end++;
                     if (axis_end && *axis_end == ',') {
                         char *keepdims_text = axis_end + 1;
                         while (isspace((unsigned char)*keepdims_text)) keepdims_text++;
-                        if (strcmp(keepdims_text, "true") == 0) requested_keepdims = true;
-                        else if (strcmp(keepdims_text, "false") != 0) {
+                        if (strcmp(keepdims_text, "true") == 0 ||
+                            strcmp(keepdims_text, "conservar dimensiones") == 0)
+                            requested_keepdims = true;
+                        else if (strcmp(keepdims_text, "false") == 0 ||
+                                 strcmp(keepdims_text, "sin conservar dimensiones") == 0)
+                            requested_keepdims = false;
+                        else {
                             milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0,
                                              "keepdims debe ser true o false");
                             goto array_cleanup_error;
