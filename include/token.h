@@ -2,6 +2,7 @@
 #define MILENA_TOKEN_H
 
 #include "common.h"
+
 #ifndef MAX_TOKEN_LEN
 #define MAX_TOKEN_LEN 256
 #endif
@@ -44,6 +45,10 @@ typedef enum {
     TOKEN_CONCEPTO_CONSERVAR,
     TOKEN_CONCEPTO_DIMENSIONES,
     TOKEN_KW_VARIABLE,
+    TOKEN_KW_FUNCION,
+    TOKEN_KW_RETORNAR,
+    TOKEN_KW_SI,
+    TOKEN_KW_SINO,
 
     // Separadores
     TOKEN_PUNTO,

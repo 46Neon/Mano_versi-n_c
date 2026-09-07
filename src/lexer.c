@@ -27,11 +27,11 @@ static char lexer_advance_char(Lexer *lexer) {
 }
 
 static bool is_identifier_start(char c) {
-    return isalpha((unsigned char)c) || c == '_' || c >= 0x80;
+    return isalpha((unsigned char)c) || c == '_' || (unsigned char)c >= 0x80;
 }
 
 static bool is_identifier_char(char c) {
-    return isalnum((unsigned char)c) || c == '_' || c >= 0x80;
+    return isalnum((unsigned char)c) || c == '_' || (unsigned char)c >= 0x80;
 }
 
 static bool is_keyword(const char *str) {
@@ -42,9 +42,9 @@ static bool is_keyword(const char *str) {
         "extraer", "total", "periodo", "verdadero", "falso",
         "forma", "dimensiones", "tamaño", "suma", "media", "minimo",
         "maximo", "varianza", "desviacion_estandar", "mediana", "percentil",
-        "eje", "conservar", "variable"
+        "eje", "conservar", "variable", "funcion", "función", "retornar", "si", "sino"
     };
-    static const int num_keywords = (int)(sizeof(keywords) / sizeof(keywords[0]));
+    static const int num_keywords = 39;
     
     for (int i = 0; i < num_keywords; i++) {
         if (strcmp(str, keywords[i]) == 0) return true;
@@ -85,6 +85,10 @@ static TokenType keyword_type(const char *str) {
     if (strcmp(str, "eje") == 0) return TOKEN_CONCEPTO_EJE;
     if (strcmp(str, "conservar") == 0) return TOKEN_CONCEPTO_CONSERVAR;
     if (strcmp(str, "variable") == 0) return TOKEN_KW_VARIABLE;
+    if (strcmp(str, "funcion") == 0 || strcmp(str, "función") == 0) return TOKEN_KW_FUNCION;
+    if (strcmp(str, "retornar") == 0) return TOKEN_KW_RETORNAR;
+    if (strcmp(str, "si") == 0) return TOKEN_KW_SI;
+    if (strcmp(str, "sino") == 0) return TOKEN_KW_SINO;
     if (strcmp(str, "verdadero") == 0 || strcmp(str, "falso") == 0) return TOKEN_BOOLEANO;
     return TOKEN_IDENTIFICADOR;
 }
@@ -241,6 +245,12 @@ Token lexer_next_token(Lexer *lexer) {
         return token;
     }
     
+    if (c == '!') {
+        lexer_advance_char(lexer);
+        if (lexer_current(lexer) == '=') { lexer_advance_char(lexer); token = lexer_create_token(lexer, TOKEN_DISTINTO, "!="); lexer->current_token = token; return token; }
+        token = lexer_create_token(lexer, TOKEN_ERROR, "!"); lexer->current_token = token; return token;
+    }
+    
     if (c == '>') {
         lexer_advance_char(lexer);
         if (lexer_current(lexer) == '=') {
@@ -328,7 +338,7 @@ Token lexer_next_token(Lexer *lexer) {
     }
     
     // Números
-    if (isdigit((unsigned char)c) || (c == '-' && isdigit((unsigned char)lexer_peek_char(lexer, 1)))) {
+    if (isdigit(c) || (c == '-' && isdigit(lexer_peek_char(lexer, 1)))) {
         char buffer[MAX_TOKEN_LEN];
         size_t idx = 0;
         bool has_dot = false;
@@ -337,8 +347,8 @@ Token lexer_next_token(Lexer *lexer) {
             buffer[idx++] = lexer_advance_char(lexer);
         }
         
-        while (isdigit((unsigned char)lexer_current(lexer)) || 
-               (lexer_current(lexer) == '.' && !has_dot && isdigit((unsigned char)lexer_peek_char(lexer, 1)))) {
+        while (isdigit(lexer_current(lexer)) || 
+               (lexer_current(lexer) == '.' && !has_dot && isdigit(lexer_peek_char(lexer, 1)))) {
             if (lexer_current(lexer) == '.') has_dot = true;
             buffer[idx++] = lexer_advance_char(lexer);
         }
@@ -375,7 +385,7 @@ Token lexer_next_token(Lexer *lexer) {
     token = lexer_create_token(lexer, TOKEN_ERROR, "carácter desconocido");
     char err_msg[64];
     snprintf(err_msg, sizeof(err_msg), "Carácter inesperado: '%c'", c);
-    milena_error_set(&lexer->error, MILENA_ERR_PARSE, lexer->line, lexer->column, 0, err_msg);
+    milena_error_set(&lexer->error, MILENA_ERR_PARSE, (size_t)lexer->line, (size_t)lexer->column, 0, err_msg);
     lexer_advance_char(lexer);
     lexer->current_token = token;
     return token;
@@ -409,8 +419,7 @@ bool lexer_match(Lexer *lexer, TokenType type) {
 
 bool lexer_expect(Lexer *lexer, TokenType type, const char *error_msg) {
     if (lexer->current_token.type != type) {
-        milena_error_set(&lexer->error, MILENA_ERR_PARSE,
-                      lexer->current_token.line, lexer->current_token.column, 0, error_msg);
+        milena_error_set(&lexer->error, MILENA_ERR_PARSE, (size_t)lexer->current_token.line, (size_t)lexer->current_token.column, 0, error_msg);
         return false;
     }
     return true;
