@@ -126,8 +126,13 @@ MilenaStatus milena_array_std_axis(MilenaArray *out, const MilenaArray *source,
                                    int axis, bool keepdims, MilenaError *error);
 MilenaStatus milena_array_median(MilenaArray *out, const MilenaArray *source,
                                  MilenaError *error);
+MilenaStatus milena_array_median_axis(MilenaArray *out, const MilenaArray *source,
+                                      int axis, bool keepdims, MilenaError *error);
 MilenaStatus milena_array_percentile(MilenaArray *out, const MilenaArray *source,
                                      double percentile, MilenaError *error);
+MilenaStatus milena_array_percentile_axis(MilenaArray *out, const MilenaArray *source,
+                                          double percentile, int axis, bool keepdims,
+                                          MilenaError *error);
 
 bool milena_array_is_contiguous(const MilenaArray *array);
 void *milena_array_data(MilenaArray *array);
