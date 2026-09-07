@@ -28,6 +28,8 @@ min(valores);
 max(valores);
 variance(valores);
 std(valores);
+median(valores);
+percentile(valores, 90);
 array enteros = [1, 2, 3];
 array otros = [4, 5, 6];
 array uno = [10];
@@ -68,6 +70,8 @@ grep -q 'min(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'max(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'variance(valores) = 0.72222222222222' "$tmp_dir/arrays.out"
 grep -q 'std(valores) = 0.849836585' "$tmp_dir/arrays.out"
+grep -q 'median(valores) = 2.5' "$tmp_dir/arrays.out"
+grep -q 'percentile(valores, 90) = 2.9' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + uno: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros - otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
