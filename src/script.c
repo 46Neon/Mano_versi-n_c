@@ -824,14 +824,14 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 MilenaArray result = {0};
                 MilenaStatus operation_status;
                 if (right_binding) {
-                    if (operation != '+') {
-                        milena_error_set(error, MILENA_ERR_UNSUPPORTED, 0, 0, 0,
-                                         "Solo se admite array + array por ahora");
-                        free(operation_script);
-                        goto array_cleanup_error;
-                    }
-                    operation_status = milena_array_add(&result, &left_binding->array,
-                                                        &right_binding->array, error);
+                    if (operation == '+') operation_status = milena_array_add(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else if (operation == '-') operation_status = milena_array_subtract(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else if (operation == '*') operation_status = milena_array_multiply(
+                        &result, &left_binding->array, &right_binding->array, error);
+                    else operation_status = milena_array_divide(
+                        &result, &left_binding->array, &right_binding->array, error);
                 } else {
                     char *number_end = NULL;
                     double scalar = strtod(right_trim, &number_end);
