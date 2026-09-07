@@ -12,11 +12,14 @@ int main(void) {
     assert(program);
     assert(!parser.has_error);
     assert(program->child_count == 2);
-    assert(program->children[0]->type == AST_ESTADISTICA_MEDIANA);
-    assert(program->children[1]->type == AST_ESTADISTICA_PERCENTIL);
-    assert(program->children[0]->children[0]->type == AST_EXPRESION_IDENTIFICADOR);
+    assert(program->children[0]->type == AST_OPERACION_ESTADISTICA);
+    assert(program->children[1]->type == AST_OPERACION_ESTADISTICA);
+    assert(program->children[0]->statistical_operation == AST_ESTADISTICA_MEDIANA &&
+    program->children[1]->statistical_operation == AST_ESTADISTICA_PERCENTIL &&
+    program->children[0]->children[0]->type == AST_EXPRESION_IDENTIFICADOR);
     assert(strcmp(program->children[0]->children[0]->value, "valores") == 0);
     assert(program->children[1]->percentile == 90.0);
     ast_destroy(program);
+    parser_release(&parser);
     return 0;
 }
