@@ -6,7 +6,7 @@
 
 int main(void) {
     const char *src =
-        "función factorial(n) { "
+        "funcion factorial(n) { "
         "si (n == 0) { retornar 1; } "
         "sino { retornar n * factorial(n - 1); } } "
         "funcion signo(n) { si (n > 0) { retornar 1; } sino { retornar 0; } } "
