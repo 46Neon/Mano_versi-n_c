@@ -19,10 +19,18 @@ grep -q '"total": 43' "$tmp_dir/test-output.json"
 cat > "$tmp_dir/arrays.milena" <<'MILENA'
 array valores = [1, 2.5, 3];
 array ceros = zeros(4);
+shape(valores);
+ndim(valores);
+size(valores);
+sum(valores);
 MILENA
 ./milena run "$tmp_dir/arrays.milena" > "$tmp_dir/arrays.out"
 grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
 grep -q 'Array ceros: dtype=float64, shape=(4), size=4' "$tmp_dir/arrays.out"
+grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
+grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
+grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
+grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
 
 cat > "$tmp_dir/clientes.csv" <<'CSV'
 edad,ciudad,canal,visitas,compro
