@@ -245,7 +245,9 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
     milena_symbols_enter_scope(&parser->symbols);
     // Parsear contenido del bloque
     while (!parser_match(parser, TOKEN_LLAVE_DER) && !parser_match(parser, TOKEN_EOF)) {
-        if (parser_match(parser, TOKEN_KW_VARIABLE)) {
+        if (parser_match(parser, TOKEN_KW_VARIABLE) ||
+            (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+             strcmp(parser->current.lexeme, "variable") == 0)) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
         } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
