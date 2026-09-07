@@ -32,6 +32,35 @@ grep -q 'ndim(valores) = 1' "$tmp_dir/arrays.out"
 grep -q 'size(valores) = 3' "$tmp_dir/arrays.out"
 grep -q 'sum(valores) = 6.5' "$tmp_dir/arrays.out"
 
+cat > "$tmp_dir/array-errors.milena" <<'MILENA'
+array vacio = [];
+MILENA
+if ./milena run "$tmp_dir/array-errors.milena" > "$tmp_dir/array-errors.out" 2>&1; then
+    echo 'Se aceptó un array vacío' >&2
+    exit 1
+fi
+grep -q 'vacío' "$tmp_dir/array-errors.out"
+
+cat > "$tmp_dir/unknown-array.milena" <<'MILENA'
+array valores = [1];
+shape(inexistente);
+MILENA
+if ./milena run "$tmp_dir/unknown-array.milena" > "$tmp_dir/unknown-array.out" 2>&1; then
+    echo 'Se aceptó una variable de array inexistente' >&2
+    exit 1
+fi
+grep -q 'Variable de array inexistente' "$tmp_dir/unknown-array.out"
+
+cat > "$tmp_dir/invalid-operation.milena" <<'MILENA'
+array valores = [1, 2, 3];
+sum();
+MILENA
+if ./milena run "$tmp_dir/invalid-operation.milena" > "$tmp_dir/invalid-operation.out" 2>&1; then
+    echo 'Se aceptó una operación sin argumento' >&2
+    exit 1
+fi
+grep -q 'Argumento inválido' "$tmp_dir/invalid-operation.out"
+
 cat > "$tmp_dir/clientes.csv" <<'CSV'
 edad,ciudad,canal,visitas,compro
 20,Caracas,web,3,1
