@@ -1100,3 +1100,56 @@ MilenaStatus milena_array_variance(MilenaArray *out, const MilenaArray *source, 
 MilenaStatus milena_array_std(MilenaArray *out, const MilenaArray *source, MilenaError *error) {
     return array_stat_value(out, source, 's', error);
 }
+
+static int compare_double_values(const void *left, const void *right) {
+    double a = *(const double *)left, b = *(const double *)right;
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+static MilenaStatus array_sorted_values(double **out_values, const MilenaArray *source,
+                                        MilenaError *error) {
+    if (!out_values || !source || !source->storage || source->size == 0) {
+        array_error(error, MILENA_ERR_ARGUMENT, "El array debe tener elementos");
+        return MILENA_ERR_ARGUMENT;
+    }
+    if (source->dtype != MILENA_DTYPE_INT64 && source->dtype != MILENA_DTYPE_FLOAT64) {
+        array_error(error, MILENA_ERR_UNSUPPORTED, "Orden estadístico no soportado para este dtype");
+        return MILENA_ERR_UNSUPPORTED;
+    }
+    double *values = (double *)malloc(source->size * sizeof(double));
+    if (!values) { array_error(error, MILENA_ERR_MEMORY, "Sin memoria para estadística"); return MILENA_ERR_MEMORY; }
+    if (source->dtype == MILENA_DTYPE_INT64) {
+        const int64_t *data = (const int64_t *)milena_array_const_data(source);
+        for (size_t i = 0; i < source->size; i++) values[i] = (double)data[i];
+    } else memcpy(values, milena_array_const_data(source), source->size * sizeof(double));
+    qsort(values, source->size, sizeof(double), compare_double_values);
+    *out_values = values;
+    return MILENA_OK;
+}
+
+MilenaStatus milena_array_percentile(MilenaArray *out, const MilenaArray *source,
+                                     double percentile, MilenaError *error) {
+    if (percentile < 0.0 || percentile > 100.0) {
+        array_error(error, MILENA_ERR_ARGUMENT, "El percentil debe estar entre 0 y 100");
+        return MILENA_ERR_ARGUMENT;
+    }
+    double *values = NULL;
+    MilenaStatus status = array_sorted_values(&values, source, error);
+    if (status != MILENA_OK) return status;
+    status = milena_array_zeros(out, MILENA_DTYPE_FLOAT64, 0, NULL, error);
+    if (status == MILENA_OK) {
+        double position = (percentile / 100.0) * (double)(source->size - 1);
+        size_t lower = (size_t)position;
+        size_t upper = lower < source->size - 1 ? lower + 1 : lower;
+        double fraction = position - (double)lower;
+        *(double *)milena_array_data(out) = values[lower] +
+            fraction * (values[upper] - values[lower]);
+    }
+    free(values);
+    return status;
+}
+
+MilenaStatus milena_array_median(MilenaArray *out, const MilenaArray *source,
+                                 MilenaError *error) {
+    return milena_array_percentile(out, source, 50.0, error);
+}
