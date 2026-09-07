@@ -122,6 +122,7 @@ const char* ast_type_name(ASTNodeType type) {
         "EXPRESION_FUNCION",
         "EXPRESION_ARRAY",
         "DECLARACION_ARRAY",
+        "DECLARACION_VARIABLE",
         "COMANDO_NULOS",
         "COMANDO_DUPLICADOS",
         "COMANDO_CONDICION",
