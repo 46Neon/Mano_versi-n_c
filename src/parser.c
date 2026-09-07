@@ -246,9 +246,19 @@ ASTNode* parser_parse(Parser *parser) {
     
     if (parser->current.type == TOKEN_FUNCION_MEDIANA ||
         parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-        ASTNode *statistic = parser_parse_statistical_call(parser);
-        if (statistic) ast_add_child(program, statistic);
-        if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
+        /* A statistical program is a sequence, not a single expression.  Keep
+         * parsing after each semicolon so callers can compose analyses while
+         * preserving the existing AST node per operation. */
+        while (parser->current.type == TOKEN_FUNCION_MEDIANA ||
+               parser->current.type == TOKEN_FUNCION_PERCENTIL) {
+            ASTNode *statistic = parser_parse_statistical_call(parser);
+            if (statistic) ast_add_child(program, statistic);
+            else break;
+            if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA,
+                               "Se esperaba ';' después de la operación estadística")) {
+                break;
+            }
+        }
     } else {
         ASTNode *analisis = parse_bloque_analisis(parser);
         if (analisis) ast_add_child(program, analisis);
