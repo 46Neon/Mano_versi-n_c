@@ -47,6 +47,13 @@ typedef struct {
     char message[MILENA_ERROR_TEXT];
 } MilenaError;
 
+typedef MilenaError MilenaErrorInfo;
+#define MILENA_ERROR_SYNTAX MILENA_ERR_PARSE
+#define MILENA_ERROR_MEMORY MILENA_ERR_MEMORY
+#define MILENA_ERROR_RUNTIME MILENA_ERR_INTERNAL
+#define MILENA_ERROR_IO MILENA_ERR_IO
+
+void milena_error_init(MilenaError *error);
 void milena_error_clear(MilenaError *error);
 void milena_error_set(MilenaError *error, MilenaStatus code, size_t line,
                     size_t column, size_t row, const char *message);
