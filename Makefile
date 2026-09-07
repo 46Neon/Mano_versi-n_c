@@ -101,5 +101,5 @@ test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finan
 	./tests/run_tests.sh
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) tests/test_sst_modules tests/test_array tests/test_table reporte.json resultado.json
+	rm -f $(OBJECTS) $(TARGET) tests/test_sst_modules tests/test_array tests/test_table tests/test_parser_array tests/test_parser_variables tests/test_user_functions reporte.json resultado.json
 
