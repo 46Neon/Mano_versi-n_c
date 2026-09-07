@@ -32,6 +32,7 @@ enteros * 2;
 enteros / 2;
 MILENA
 ./milena run "$tmp_dir/arrays.milena" > "$tmp_dir/arrays.out"
+cat "$tmp_dir/arrays.out"
 grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
 grep -q 'Array ceros: dtype=float64, shape=(4), size=4' "$tmp_dir/arrays.out"
 grep -q 'shape(valores) = (3)' "$tmp_dir/arrays.out"
