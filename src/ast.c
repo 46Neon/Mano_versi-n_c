@@ -46,6 +46,18 @@ ASTNode* ast_create_number(double value) {
     return node;
 }
 
+ASTNode* ast_create_statistic(ASTStatOperation operation, ASTNode *argument,
+                              int axis, bool keepdims, double percentile) {
+    ASTNode *node = ast_create(AST_OPERACION_ESTADISTICA);
+    if (!node) return NULL;
+    node->statistical_operation = operation;
+    node->axis = axis;
+    node->keepdims = keepdims;
+    node->percentile = percentile;
+    if (argument) ast_add_child(node, argument);
+    return node;
+}
+
 void ast_add_child(ASTNode *parent, ASTNode *child) {
     if (!parent || !child) return;
     
