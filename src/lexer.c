@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include <ctype.h>
 
 static char lexer_current(Lexer *lexer) {
     if (lexer->position >= lexer->length) return '\0';
@@ -26,11 +27,11 @@ static char lexer_advance_char(Lexer *lexer) {
 }
 
 static bool is_identifier_start(char c) {
-    return isalpha(c) || c == '_' || c >= 0x80;
+    return isalpha((unsigned char)c) || c == '_' || c >= 0x80;
 }
 
 static bool is_identifier_char(char c) {
-    return isalnum(c) || c == '_' || c >= 0x80;
+    return isalnum((unsigned char)c) || c == '_' || c >= 0x80;
 }
 
 static bool is_keyword(const char *str) {
@@ -104,7 +105,7 @@ static void lexer_skip_whitespace_and_comments(Lexer *lexer) {
     while (!done) {
         done = true;
         
-        while (isspace(lexer_current(lexer))) {
+        while (isspace((unsigned char)lexer_current(lexer))) {
             lexer_advance_char(lexer);
             done = false;
         }
@@ -327,7 +328,7 @@ Token lexer_next_token(Lexer *lexer) {
     }
     
     // Números
-    if (isdigit(c) || (c == '-' && isdigit(lexer_peek_char(lexer, 1)))) {
+    if (isdigit((unsigned char)c) || (c == '-' && isdigit((unsigned char)lexer_peek_char(lexer, 1)))) {
         char buffer[MAX_TOKEN_LEN];
         size_t idx = 0;
         bool has_dot = false;
@@ -336,8 +337,8 @@ Token lexer_next_token(Lexer *lexer) {
             buffer[idx++] = lexer_advance_char(lexer);
         }
         
-        while (isdigit(lexer_current(lexer)) || 
-               (lexer_current(lexer) == '.' && !has_dot && isdigit(lexer_peek_char(lexer, 1)))) {
+        while (isdigit((unsigned char)lexer_current(lexer)) || 
+               (lexer_current(lexer) == '.' && !has_dot && isdigit((unsigned char)lexer_peek_char(lexer, 1)))) {
             if (lexer_current(lexer) == '.') has_dot = true;
             buffer[idx++] = lexer_advance_char(lexer);
         }
