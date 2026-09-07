@@ -103,10 +103,3 @@ test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finan
 clean:
 	rm -f $(OBJECTS) $(TARGET) tests/test_sst_modules tests/test_array tests/test_table reporte.json resultado.json
 
-.PHONY: test-user-functions
-
-test-user-functions: tests/test_user_functions
-	./tests/test_user_functions
-
-tests/test_user_functions: tests/test_user_functions.c src/user_functions.c include/user_functions.h
-	$(CC) $(CFLAGS) -Iinclude tests/test_user_functions.c src/user_functions.c -o $@

@@ -374,7 +374,7 @@ Token lexer_next_token(Lexer *lexer) {
     token = lexer_create_token(lexer, TOKEN_ERROR, "carácter desconocido");
     char err_msg[64];
     snprintf(err_msg, sizeof(err_msg), "Carácter inesperado: '%c'", c);
-    milena_error_set(&lexer->error, MILENA_ERROR_LEXICAL, err_msg, lexer->line, lexer->column);
+    milena_error_set(&lexer->error, MILENA_ERR_PARSE, lexer->line, lexer->column, 0, err_msg);
     lexer_advance_char(lexer);
     lexer->current_token = token;
     return token;
@@ -408,8 +408,8 @@ bool lexer_match(Lexer *lexer, TokenType type) {
 
 bool lexer_expect(Lexer *lexer, TokenType type, const char *error_msg) {
     if (lexer->current_token.type != type) {
-        milena_error_set(&lexer->error, MILENA_ERROR_SYNTAX, error_msg, 
-                      lexer->current_token.line, lexer->current_token.column);
+        milena_error_set(&lexer->error, MILENA_ERR_PARSE,
+                      lexer->current_token.line, lexer->current_token.column, 0, error_msg);
         return false;
     }
     return true;
