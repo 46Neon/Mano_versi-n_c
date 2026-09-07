@@ -51,6 +51,7 @@ void milena_error_clear(MilenaError *error);
 void milena_error_set(MilenaError *error, MilenaStatus code, size_t line,
                     size_t column, size_t row, const char *message);
 const char *milena_status_name(MilenaStatus status);
+const char *milena_error_category_name(MilenaErrorCategory category);
 char *milena_strdup(const char *text);
 bool milena_size_add(size_t a, size_t b, size_t *out);
 bool milena_size_mul(size_t a, size_t b, size_t *out);
