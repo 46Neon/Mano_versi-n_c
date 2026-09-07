@@ -894,11 +894,12 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                                             requested_percentile, error);
                 if (order_status != MILENA_OK) goto array_cleanup_error;
                 if (canonical_operation == 9)
-                    printf("median(%s) = %.17g\n", name,
+                    printf("%.*s(%s) = %.17g\n", (int)display_length,
+                           display_operation, name,
                            *(const double *)milena_array_const_data(&result));
                 else
-                    printf("percentile(%s, %.17g) = %.17g\n", name,
-                           requested_percentile,
+                    printf("%.*s(%s, %.17g) = %.17g\n", (int)display_length,
+                           display_operation, name, requested_percentile,
                            *(const double *)milena_array_const_data(&result));
                 milena_array_release(&result);
             } else {
@@ -922,9 +923,12 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 else if (canonical_operation == 7) stat_status = milena_array_variance(&result, &binding->array, error);
                 else stat_status = milena_array_std(&result, &binding->array, error);
                 if (stat_status != MILENA_OK) goto array_cleanup_error;
-                const char *label = canonical_operation == 3 ? "sum" : canonical_operation == 4 ? "mean" :
-                    canonical_operation == 5 ? "min" : canonical_operation == 6 ? "max" :
-                    canonical_operation == 7 ? "variance" : "std";
+                const char *label = canonical_operation == 3 ? (operation >= 11 ? "suma" : "sum") :
+                    canonical_operation == 4 ? (operation >= 11 ? "media" : "mean") :
+                    canonical_operation == 5 ? (operation >= 11 ? "minimo" : "min") :
+                    canonical_operation == 6 ? (operation >= 11 ? "maximo" : "max") :
+                    canonical_operation == 7 ? (operation >= 11 ? "varianza" : "variance") :
+                    (operation >= 11 ? "desviacion_estandar" : "std");
                 if (canonical_operation == 3 && result.dtype == MILENA_DTYPE_INT64)
                     printf("%s(%s) = %lld\n", label, name,
                            (long long)*(const int64_t *)milena_array_const_data(&result));
