@@ -56,7 +56,7 @@ tests/test_language_array: tests/test_language_array.c src/lexer.c src/ast.c src
 test-parser-array: tests/test_parser_array
 	./tests/test_parser_array
 
-tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c
+tests/test_parser_array: tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
 	$(CC) $(CFLAGS) tests/test_parser_array.c src/parser.c src/lexer.c src/ast.c src/common.c $(LDFLAGS) -o $@
 
 .PHONY: test-parser-variables
