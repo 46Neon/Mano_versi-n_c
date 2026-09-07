@@ -6,6 +6,7 @@ void parser_init(Parser *parser, Lexer *lexer) {
     parser->previous = parser->current;
     parser->has_error = false;
     milena_error_init(&parser->error);
+    milena_symbols_init(&parser->symbols);
 }
 
 void parser_error(Parser *parser, const char *msg) {
@@ -116,6 +117,10 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
         ASTNode *right = ast_create_number(parser->previous.number_value);
         if (!operation || !right) { ast_destroy(value); ast_destroy(operation); ast_destroy(right); parser_error(parser, "No se pudo crear la expresión"); return NULL; }
         ast_add_child(operation, value); ast_add_child(operation, right); value = operation;
+    }
+    if (milena_symbols_declare(&parser->symbols, name, &parser->error) != MILENA_OK) {
+        parser->has_error = true;
+        return NULL;
     }
     ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
     if (!node || !value) { ast_destroy(node); ast_destroy(value); parser_error(parser, "No se pudo crear la variable"); return NULL; }
