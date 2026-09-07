@@ -17,6 +17,10 @@ test -s "$tmp_dir/test-output.json"
 grep -q '"total": 43' "$tmp_dir/test-output.json"
 
 cat > "$tmp_dir/arrays.milena" <<'MILENA'
+arreglo valores_es = [1, 2, 3];
+arreglo matriz_es = ceros(2, 3);
+forma(valores_es);
+forma(matriz_es);
 array valores = [1, 2.5, 3];
 array ceros = zeros(4);
 shape(valores);
@@ -71,6 +75,10 @@ enteros / 2;
 MILENA
 ./milena run "$tmp_dir/arrays.milena" > "$tmp_dir/arrays.out"
 cat "$tmp_dir/arrays.out"
+grep -q 'Array valores_es: dtype=int64, shape=(3), size=3' "$tmp_dir/arrays.out"
+grep -q 'Array matriz_es: dtype=float64, shape=(2, 3), size=6' "$tmp_dir/arrays.out"
+grep -q 'forma(valores_es) = (3)' "$tmp_dir/arrays.out"
+grep -q 'forma(matriz_es) = (2, 3)' "$tmp_dir/arrays.out"
 grep -q 'Array valores: dtype=float64, shape=(3), size=3' "$tmp_dir/arrays.out"
 grep -q 'Array ceros: dtype=float64, shape=(4), size=4' "$tmp_dir/arrays.out"
 grep -q 'Array uno: dtype=int64, shape=(1), size=1' "$tmp_dir/arrays.out"
