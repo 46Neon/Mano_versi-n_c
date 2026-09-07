@@ -898,14 +898,18 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                         milena_array_median(&result, &binding->array, error) :
                         milena_array_percentile(&result, &binding->array, requested_percentile, error);
                 if (order_status != MILENA_OK) goto array_cleanup_error;
-                if (canonical_operation == 9)
-                    printf("%.*s(%s) = %.17g\n", (int)display_length,
-                           display_operation, name,
-                           *(const double *)milena_array_const_data(&result));
-                else
-                    printf("%.*s(%s, %.17g) = %.17g\n", (int)display_length,
-                           display_operation, name, requested_percentile,
-                           *(const double *)milena_array_const_data(&result));
+                printf("%.*s(%s", (int)display_length, display_operation, name);
+                if (canonical_operation == 10) printf(", %.17g", requested_percentile);
+                printf(") = ");
+                const double *ordered = milena_array_const_data(&result);
+                if (result.size == 1) printf("%.17g\n", ordered[0]);
+                else {
+                    printf("[");
+                    for (size_t i = 0; i < result.size; i++) printf("%s%.17g", i ? ", " : "", ordered[i]);
+                    printf("] shape=(");
+                    for (size_t i = 0; i < result.ndim; i++) printf("%s%zu", i ? ", " : "", result.shape[i]);
+                    printf(")\n");
+                }
                 milena_array_release(&result);
             } else {
                 MilenaArray result = {0};
