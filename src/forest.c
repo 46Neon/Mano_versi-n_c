@@ -1,93 +1,34 @@
 #include "forest.h"
 
-static double forest_value(const MilenaArray *a, size_t index) {
-    if (a->dtype == MILENA_DTYPE_INT64)
-        return (double)((const int64_t *)milena_array_const_data(a))[index];
-    return ((const double *)milena_array_const_data(a))[index];
-}
-
-static int64_t forest_majority(const MilenaArray *labels, const MilenaArray *features,
-                               size_t feature, double threshold, bool left) {
-    size_t rows = features->shape[0];
-    const int64_t *values = milena_array_const_data(labels);
-    int64_t best = values[0]; size_t best_count = 0;
-    for (size_t i = 0; i < rows; i++) {
-        double value = forest_value(features, i * features->shape[1] + feature);
-        if ((value <= threshold) != left) continue;
-        size_t count = 0;
-        for (size_t j = 0; j < rows; j++) {
-            double other = forest_value(features, j * features->shape[1] + feature);
-            if ((other <= threshold) == left && values[j] == values[i]) count++;
-        }
-        if (count > best_count) { best_count = count; best = values[i]; }
-    }
+static double fv(const MilenaArray *a, size_t i) { return a->dtype == MILENA_DTYPE_INT64 ? (double)((const int64_t *)milena_array_const_data(a))[i] : ((const double *)milena_array_const_data(a))[i]; }
+static int64_t majority(const MilenaArray *y, const size_t *rows, size_t n) {
+    const int64_t *v = milena_array_const_data(y); int64_t best = v[rows[0]]; size_t bc = 0;
+    for (size_t i=0;i<n;i++){size_t c=0;for(size_t j=0;j<n;j++)if(v[rows[j]]==v[rows[i]])c++;if(c>bc){bc=c;best=v[rows[i]];}}
     return best;
 }
-
-void milena_forest_init(MilenaForestClassifier *forest) {
-    if (forest) { forest->tree_count = 0; forest->feature_count = 0; forest->trees = NULL; }
+static size_t add_node(MilenaForestClassifier *f, MilenaForestNode node) {
+    size_t i=f->node_count++; f->nodes[i]=node; return i;
 }
-
-void milena_forest_release(MilenaForestClassifier *forest) {
-    if (forest) { free(forest->trees); milena_forest_init(forest); }
+static size_t build(MilenaForestClassifier *f,const MilenaArray *x,const MilenaArray *y,const size_t *rows,size_t n,size_t depth,size_t tree,MilenaError *e){
+    (void)e; int64_t cls=majority(y,rows,n); const int64_t *yv=milena_array_const_data(y);
+    bool pure=true;for(size_t i=1;i<n;i++)if(yv[rows[i]]!=yv[rows[0]]){pure=false;break;}
+    size_t node=add_node(f,(MilenaForestNode){0,0,0,0,cls,true});
+    if(depth>=f->max_depth||pure||n<2)return node;
+    size_t feature=(depth+tree)%f->feature_count; double lo=fv(x,rows[0]*x->shape[1]+feature),hi=lo;
+    for(size_t i=1;i<n;i++){double z=fv(x,rows[i]*x->shape[1]+feature);if(z<lo)lo=z;if(z>hi)hi=z;}
+    if(lo==hi)return node; double cut=(lo+hi)/2.0;size_t nl=0,nr=0;for(size_t i=0;i<n;i++)(fv(x,rows[i]*x->shape[1]+feature)<=cut?nl:nr)++;
+    if(!nl||!nr)return node;size_t *left=malloc(nl*sizeof(*left)),*right=malloc(nr*sizeof(*right));if(!left||!right){free(left);free(right);return node;}
+    size_t il=0,ir=0;for(size_t i=0;i<n;i++){if(fv(x,rows[i]*x->shape[1]+feature)<=cut)left[il++]=rows[i];else right[ir++]=rows[i];}
+    size_t a=build(f,x,y,left,nl,depth+1,tree,e),b=build(f,x,y,right,nr,depth+1,tree,e);free(left);free(right);
+    f->nodes[node]=(MilenaForestNode){feature,cut,a,b,cls,false};return node;
 }
-
-MilenaStatus milena_forest_train(MilenaForestClassifier *forest,
-                                  const MilenaArray *features,
-                                  const MilenaArray *labels,
-                                  size_t tree_count,
-                                  MilenaError *error) {
-    if (!forest || !features || !labels || !features->storage || !labels->storage ||
-        features->ndim != 2 || labels->ndim != 1 || features->shape[0] != labels->shape[0] ||
-        features->shape[0] == 0 || features->shape[1] == 0 || tree_count == 0 ||
-        (features->dtype != MILENA_DTYPE_INT64 && features->dtype != MILENA_DTYPE_FLOAT64) ||
-        labels->dtype != MILENA_DTYPE_INT64) {
-        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0, "Datos inválidos para bosque");
-        return MILENA_ERR_ARGUMENT;
-    }
-    MilenaDecisionStump *trees = calloc(tree_count, sizeof(*trees));
-    if (!trees) { milena_error_set(error, MILENA_ERR_MEMORY, 0, 0, 0, "Sin memoria para bosque"); return MILENA_ERR_MEMORY; }
-    size_t rows = features->shape[0], cols = features->shape[1];
-    for (size_t t = 0; t < tree_count; t++) {
-        size_t feature = t % cols;
-        double low = forest_value(features, feature), high = low;
-        for (size_t r = 1; r < rows; r++) { double v = forest_value(features, r * cols + feature); if (v < low) low = v; if (v > high) high = v; }
-        double threshold = (low + high) / 2.0;
-        int64_t left_class = forest_majority(labels, features, feature, threshold, true);
-        int64_t right_class = forest_majority(labels, features, feature, threshold, false);
-        trees[t] = (MilenaDecisionStump){feature, threshold, left_class, right_class};
-    }
-    milena_forest_release(forest); forest->trees = trees; forest->tree_count = tree_count; forest->feature_count = cols;
-    return MILENA_OK;
+void milena_forest_init(MilenaForestClassifier *f){if(f){memset(f,0,sizeof(*f));}}
+void milena_forest_release(MilenaForestClassifier *f){if(f){free(f->roots);free(f->nodes);milena_forest_init(f);}}
+MilenaStatus milena_forest_train_depth(MilenaForestClassifier *f,const MilenaArray *x,const MilenaArray *y,size_t trees,size_t depth,MilenaError *e){
+ if(!f||!x||!y||!x->storage||!y->storage||x->ndim!=2||y->ndim!=1||x->shape[0]!=y->shape[0]||!x->shape[0]||!x->shape[1]||!trees||!depth||(x->dtype!=MILENA_DTYPE_INT64&&x->dtype!=MILENA_DTYPE_FLOAT64)||y->dtype!=MILENA_DTYPE_INT64){milena_error_set(e,MILENA_ERR_ARGUMENT,0,0,0,"Datos inválidos para bosque");return MILENA_ERR_ARGUMENT;}
+ MilenaForestClassifier n={0};n.tree_count=trees;n.feature_count=x->shape[1];n.max_depth=depth;n.roots=calloc(trees,sizeof(*n.roots));n.nodes=calloc(trees*((size_t)1<<(depth+1)),sizeof(*n.nodes));if(!n.roots||!n.nodes){free(n.roots);free(n.nodes);return MILENA_ERR_MEMORY;}
+ size_t *rows=malloc(x->shape[0]*sizeof(*rows));if(!rows){milena_forest_release(&n);return MILENA_ERR_MEMORY;}for(size_t i=0;i<x->shape[0];i++)rows[i]=i;for(size_t t=0;t<trees;t++)n.roots[t]=build(&n,x,y,rows,x->shape[0],0,t,e);free(rows);milena_forest_release(f);*f=n;return MILENA_OK;
 }
-
-MilenaStatus milena_forest_predict(const MilenaForestClassifier *forest,
-                                   const MilenaArray *features,
-                                   MilenaArray *predictions,
-                                   MilenaError *error) {
-    if (!forest || !forest->trees || !features || features->ndim != 2 || features->shape[1] != forest->feature_count) {
-        milena_error_set(error, MILENA_ERR_ARGUMENT, 0, 0, 0, "Datos inválidos para predicción"); return MILENA_ERR_ARGUMENT;
-    }
-    size_t shape[] = {features->shape[0]};
-    MilenaStatus status = milena_array_zeros(predictions, MILENA_DTYPE_INT64, 1, shape, error);
-    if (status != MILENA_OK) return status;
-    int64_t *out = milena_array_data(predictions);
-    for (size_t r = 0; r < features->shape[0]; r++) {
-        int64_t best_label = 0; size_t best_votes = 0;
-        for (size_t t = 0; t < forest->tree_count; t++) {
-            const MilenaDecisionStump *tree = &forest->trees[t];
-            double value = forest_value(features, r * features->shape[1] + tree->feature);
-            int64_t label = value <= tree->threshold ? tree->left_class : tree->right_class;
-            size_t votes = 0;
-            for (size_t u = 0; u <= t; u++) {
-                const MilenaDecisionStump *other = &forest->trees[u];
-                double other_value = forest_value(features, r * features->shape[1] + other->feature);
-                int64_t other_label = other_value <= other->threshold ? other->left_class : other->right_class;
-                if (other_label == label) votes++;
-            }
-            if (votes > best_votes) { best_votes = votes; best_label = label; }
-        }
-        out[r] = best_label;
-    }
-    return MILENA_OK;
-}
+MilenaStatus milena_forest_train(MilenaForestClassifier *f,const MilenaArray *x,const MilenaArray *y,size_t trees,MilenaError *e){return milena_forest_train_depth(f,x,y,trees,1,e);}
+MilenaStatus milena_forest_predict(const MilenaForestClassifier *f,const MilenaArray *x,MilenaArray *out,MilenaError *e){
+ if(!f||!f->roots||!x||x->ndim!=2||x->shape[1]!=f->feature_count){milena_error_set(e,MILENA_ERR_ARGUMENT,0,0,0,"Datos inválidos para predicción");return MILENA_ERR_ARGUMENT;}size_t sh[]={x->shape[0]};MilenaStatus s=milena_array_zeros(out,MILENA_DTYPE_INT64,1,sh,e);if(s!=MILENA_OK)return s;int64_t *p=milena_array_data(out);for(size_t r=0;r<x->shape[0];r++){int64_t *votes=calloc(f->tree_count,sizeof(*votes));for(size_t t=0;t<f->tree_count;t++){size_t n=f->roots[t];while(!f->nodes[n].leaf)n=fv(x,r*x->shape[1]+f->nodes[n].feature)<=f->nodes[n].threshold?f->nodes[n].left:f->nodes[n].right;votes[t]=f->nodes[n].prediction;}size_t best=0,bc=0;for(size_t i=0;i<f->tree_count;i++){size_t c=0;for(size_t j=0;j<f->tree_count;j++)if(votes[i]==votes[j])c++;if(c>bc){bc=c;best=i;}}p[r]=votes[best];free(votes);}return MILENA_OK;}
