@@ -91,7 +91,7 @@ debug:
 	$(MAKE) clean
 	$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -g3 -O0 -fsanitize=address,undefined -Iinclude' LDFLAGS='-fsanitize=address,undefined -lm'
 
-test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finance
+test: $(TARGET) test-sst test-array test-forest test-arena test-table test-finance test-parser-array test-parser-variables
 	./tests/run_tests.sh
 
 clean:
