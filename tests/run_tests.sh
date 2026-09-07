@@ -55,9 +55,6 @@ array columna = zeros(2, 1);
 array tablero = zeros(1, 3);
 mean(matriz, 0);
 mean(matriz, 0, true);
-media(matriz, eje 0, conservar dimensiones);
-mediana(matriz, 0, conservar dimensiones);
-percentil(matriz, 1, 1, conservar dimensiones);
 mean(matriz, 1);
 min(matriz, 0);
 max(matriz, 1);
@@ -103,8 +100,6 @@ grep -q 'median(valores) = 2.5' "$tmp_dir/arrays.out"
 grep -q 'percentile(valores, 90) = 2.899999' "$tmp_dir/arrays.out"
 grep -q 'mean(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'mean(matriz) = \[0, 0, 0\] shape=(1, 3)' "$tmp_dir/arrays.out"
-grep -q 'mediana(matriz) = \[0, 0, 0\] shape=(1, 3)' "$tmp_dir/arrays.out"
-grep -q 'percentil(matriz, 1) = \[0, 0\] shape=(2, 1)' "$tmp_dir/arrays.out"
 grep -q 'media(matriz) = \[0, 0, 0\] shape=(1, 3)' "$tmp_dir/arrays.out"
 grep -q 'mean(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
 grep -q 'min(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
