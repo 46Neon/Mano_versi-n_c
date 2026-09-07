@@ -1,4 +1,3 @@
-###src/script.c
 #include "script.h"
 #include "analysis.h"
 #include "sst_advanced.h"
@@ -1056,7 +1055,7 @@ static MilenaStatus run_numeric_functions(const char *script, MilenaError *error
         name[ni] = '\0'; while (isspace((unsigned char)*call)) call++;
         if (*call != '(' || !name[0]) { milena_function_table_release(&table); milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0, "Llamada de función inválida"); return MILENA_ERR_PARSE; }
         call++; double args[64]; size_t argc = 0; while (1) { char *end; while (isspace((unsigned char)*call)) call++; if (*call == ')') { call++; break; } if (argc == 64) { milena_function_table_release(&table); return MILENA_ERR_PARSE; } args[argc] = strtod(call, &end); if (end == call) { milena_function_table_release(&table); milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0, "Argumento numérico inválido"); return MILENA_ERR_PARSE; } argc++; call = end; while (isspace((unsigned char)*call)) call++; if (*call == ',') { call++; continue; } if (*call == ')') { call++; break; } milena_function_table_release(&table); milena_error_set(error, MILENA_ERR_PARSE, 0, 0, 0, "Se esperaba ',' o ')'"); return MILENA_ERR_PARSE; }
-        double result = 0.0; if (!milena_function_call(&table, name, args, argc, &result, message, sizeof message)) { milena_function_table_release(&table); milena_error_set(error, MILENA_ERR_RUNTIME, 0, 0, 0, message); return MILENA_ERR_RUNTIME; }
+        double result = 0.0; if (!milena_function_call(&table, name, args, argc, &result, message, sizeof message)) { milena_function_table_release(&table); milena_error_set(error, MILENA_ERROR_RUNTIME, 0, 0, 0, message); return MILENA_ERROR_RUNTIME; }
         printf("%s = %.17g\n", name, result);
     }
     milena_function_table_release(&table); return MILENA_OK;
