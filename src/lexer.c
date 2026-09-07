@@ -38,9 +38,12 @@ static bool is_keyword(const char *str) {
         "analisis", "datos", "estadistica", "dataset", "limpiar",
         "transformar", "visualizar", "exportar", "filtrar", "agrupar",
         "resumir", "cargar", "nulos", "duplicados", "condicion",
-        "extraer", "total", "periodo", "verdadero", "falso"
+        "extraer", "total", "periodo", "verdadero", "falso",
+        "forma", "dimensiones", "tamaño", "suma", "media", "minimo",
+        "maximo", "varianza", "desviacion_estandar", "mediana", "percentil",
+        "eje", "conservar"
     };
-    static const int num_keywords = 20;
+    static const int num_keywords = 33;
     
     for (int i = 0; i < num_keywords; i++) {
         if (strcmp(str, keywords[i]) == 0) return true;
@@ -67,6 +70,19 @@ static TokenType keyword_type(const char *str) {
     if (strcmp(str, "extraer") == 0) return TOKEN_KW_EXTRAER;
     if (strcmp(str, "total") == 0) return TOKEN_KW_TOTAL;
     if (strcmp(str, "periodo") == 0) return TOKEN_KW_PERIODO;
+    if (strcmp(str, "forma") == 0) return TOKEN_FUNCION_FORMA;
+    if (strcmp(str, "dimensiones") == 0) return TOKEN_FUNCION_DIMENSIONES;
+    if (strcmp(str, "tamaño") == 0) return TOKEN_FUNCION_TAMANO;
+    if (strcmp(str, "suma") == 0) return TOKEN_FUNCION_SUMA;
+    if (strcmp(str, "media") == 0) return TOKEN_FUNCION_MEDIA;
+    if (strcmp(str, "minimo") == 0) return TOKEN_FUNCION_MINIMO;
+    if (strcmp(str, "maximo") == 0) return TOKEN_FUNCION_MAXIMO;
+    if (strcmp(str, "varianza") == 0) return TOKEN_FUNCION_VARIANZA;
+    if (strcmp(str, "desviacion_estandar") == 0) return TOKEN_FUNCION_DESVIACION;
+    if (strcmp(str, "mediana") == 0) return TOKEN_FUNCION_MEDIANA;
+    if (strcmp(str, "percentil") == 0) return TOKEN_FUNCION_PERCENTIL;
+    if (strcmp(str, "eje") == 0) return TOKEN_CONCEPTO_EJE;
+    if (strcmp(str, "conservar") == 0) return TOKEN_CONCEPTO_CONSERVAR;
     if (strcmp(str, "verdadero") == 0 || strcmp(str, "falso") == 0) return TOKEN_BOOLEANO;
     return TOKEN_IDENTIFICADOR;
 }
@@ -405,6 +421,10 @@ const char *token_type_name(TokenType type) {
         "TRANSFORMAR", "VISUALIZAR", "EXPORTAR", "FILTRAR", "AGRUPAR",
         "RESUMIR", "CARGAR", "NULOS", "DUPLICADOS", "CONDICION",
         "EXTRAER", "TOTAL", "PERIODO",
+        "FUNCION_FORMA", "FUNCION_DIMENSIONES", "FUNCION_TAMANO", "FUNCION_SUMA",
+        "FUNCION_MEDIA", "FUNCION_MINIMO", "FUNCION_MAXIMO", "FUNCION_VARIANZA",
+        "FUNCION_DESVIACION", "FUNCION_MEDIANA", "FUNCION_PERCENTIL", "CONCEPTO_EJE",
+        "CONCEPTO_CONSERVAR", "CONCEPTO_DIMENSIONES",
         "PUNTO", "NUMERAL", "LLAVE_IZQ", "LLAVE_DER", "PAR_IZQ", "PAR_DER",
         "CORCHETE_IZQ", "CORCHETE_DER", "DOS_PUNTOS", "COMA", "PUNTO_Y_COMA",
         "IGUAL", "IGUAL_IGUAL", "DISTINTO", "MAYOR", "MAYOR_IGUAL",
@@ -417,7 +437,7 @@ const char *token_type_name(TokenType type) {
 }
 
 bool token_is_keyword(TokenType type) {
-    return type >= TOKEN_KW_ANALISIS && type <= TOKEN_KW_PERIODO;
+    return type >= TOKEN_KW_ANALISIS && type <= TOKEN_CONCEPTO_DIMENSIONES;
 }
 
 bool token_is_operator(TokenType type) {
