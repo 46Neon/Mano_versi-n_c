@@ -38,6 +38,12 @@ array matriz_dos = zeros(2, 3);
 array fila = zeros(1, 3);
 array columna = zeros(2, 1);
 array tablero = zeros(1, 3);
+mean(matriz, 0);
+mean(matriz, 1);
+min(matriz, 0);
+max(matriz, 1);
+variance(matriz, 0);
+std(matriz, 1);
 matriz + matriz_dos;
 matriz + fila;
 columna + tablero;
@@ -72,6 +78,12 @@ grep -q 'variance(valores) = 0.72222222222222' "$tmp_dir/arrays.out"
 grep -q 'std(valores) = 0.849836585' "$tmp_dir/arrays.out"
 grep -q 'median(valores) = 2.5' "$tmp_dir/arrays.out"
 grep -q 'percentile(valores, 90) = 2.899999' "$tmp_dir/arrays.out"
+grep -q 'mean(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'mean(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
+grep -q 'min(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'max(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
+grep -q 'variance(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'std(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + uno: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros + otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'Operacion enteros - otros: dtype=int64, shape=(3)' "$tmp_dir/arrays.out"
