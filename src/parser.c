@@ -9,8 +9,8 @@ void parser_init(Parser *parser, Lexer *lexer) {
 }
 
 void parser_error(Parser *parser, const char *msg) {
-    milena_error_set(&parser->error, MILENA_ERROR_SYNTAX, msg,
-                  parser->current.line, parser->current.column);
+    milena_error_set(&parser->error, MILENA_ERR_PARSE,
+                     parser->current.line, parser->current.column, 0, msg);
     parser->has_error = true;
 }
 
