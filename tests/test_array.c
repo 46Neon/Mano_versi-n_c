@@ -248,7 +248,7 @@ static void test_order_statistics_by_axis(void) {
     const int64_t values[] = {1, 4, 7, 2, 5, 8, 3, 6, 9};
     const double expected_median_axis0[] = {2, 5, 8};
     const double expected_percentile_axis1[] = {4, 5, 6};
-    MilenaArray array = {0}, median = {0}, percentile = {0};
+    MilenaArray array = {0}, median = {0}, percentile = {0}, low = {0}, high = {0};
     MilenaError error;
     milena_error_clear(&error);
     expect_ok(milena_array_from_i64(&array, 2, shape, values, &error), &error);
@@ -260,6 +260,12 @@ static void test_order_statistics_by_axis(void) {
     assert(percentile.ndim == 2 && percentile.shape[0] == 3 && percentile.shape[1] == 1);
     assert(memcmp(milena_array_const_data(&percentile), expected_percentile_axis1,
                   sizeof(expected_percentile_axis1)) == 0);
+    expect_ok(milena_array_percentile_axis(&low, &array, 0.0, 1, false, &error), &error);
+    expect_ok(milena_array_percentile_axis(&high, &array, 100.0, 1, false, &error), &error);
+    assert(((const double *)milena_array_const_data(&low))[0] == 1.0);
+    assert(((const double *)milena_array_const_data(&high))[2] == 9.0);
+    milena_array_release(&high);
+    milena_array_release(&low);
     milena_array_release(&percentile);
     milena_array_release(&median);
     milena_array_release(&array);
