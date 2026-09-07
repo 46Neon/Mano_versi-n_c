@@ -39,6 +39,7 @@ array fila = zeros(1, 3);
 array columna = zeros(2, 1);
 array tablero = zeros(1, 3);
 mean(matriz, 0);
+mean(matriz, 0, true);
 mean(matriz, 1);
 min(matriz, 0);
 max(matriz, 1);
@@ -79,6 +80,7 @@ grep -q 'std(valores) = 0.849836585' "$tmp_dir/arrays.out"
 grep -q 'median(valores) = 2.5' "$tmp_dir/arrays.out"
 grep -q 'percentile(valores, 90) = 2.899999' "$tmp_dir/arrays.out"
 grep -q 'mean(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
+grep -q 'mean(matriz) = \[0, 0, 0\] shape=(1, 3)' "$tmp_dir/arrays.out"
 grep -q 'mean(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
 grep -q 'min(matriz) = \[0, 0, 0\] shape=(3)' "$tmp_dir/arrays.out"
 grep -q 'max(matriz) = \[0, 0\] shape=(2)' "$tmp_dir/arrays.out"
