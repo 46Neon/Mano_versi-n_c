@@ -9,6 +9,8 @@ static MilenaErrorCategory error_category(MilenaStatus code) {
     return MILENA_ERROR_NINGUNO;
 }
 
+void milena_error_init(MilenaError *error) { milena_error_clear(error); }
+
 void milena_error_clear(MilenaError *error) {
     if (!error) return;
     error->code = MILENA_OK;
