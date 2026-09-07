@@ -111,12 +111,17 @@ static ASTNode *parse_array_declaration(Parser *parser) {
     return declaration;
 }
 
+static bool parser_is_identifier_token(const Parser *parser) {
+    return parser_match((Parser *)parser, TOKEN_IDENTIFICADOR) ||
+           parser_match((Parser *)parser, TOKEN_KW_TOTAL);
+}
+
 static ASTNode *parse_expression(Parser *parser) {
     ASTNode *left = NULL;
     if (parser_match(parser, TOKEN_NUMERO)) {
         parser_advance(parser);
         left = ast_create_number(parser->previous.number_value);
-    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+    } else if (parser_is_identifier_token(parser)) {
         if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
             parser_error(parser, "La variable usada no ha sido declarada");
             return NULL;
@@ -139,7 +144,7 @@ static ASTNode *parse_expression(Parser *parser) {
         if (parser_match(parser, TOKEN_NUMERO)) {
             parser_advance(parser);
             right = ast_create_number(parser->previous.number_value);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        } else if (parser_is_identifier_token(parser)) {
             if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
                 ast_destroy(left);
                 parser_error(parser, "La variable usada no ha sido declarada");
@@ -170,7 +175,11 @@ static ASTNode *parse_expression(Parser *parser) {
 
 static ASTNode *parse_variable_declaration(Parser *parser) {
     parser_advance(parser);
-    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
+    if (!parser_is_identifier_token(parser)) {
+        parser_error(parser, "Se esperaba nombre de variable");
+        return NULL;
+    }
+    parser_advance(parser);
     char name[MAX_TOKEN_LEN];
     strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
@@ -239,7 +248,8 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
         if (parser_match(parser, TOKEN_KW_VARIABLE)) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
-        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
+        } else if ((parser_match(parser, TOKEN_IDENTIFICADOR) ||
+                   parser_match(parser, TOKEN_KW_TOTAL)) &&
                    strcmp(parser->current.lexeme, "array") != 0 &&
                    strcmp(parser->current.lexeme, "arreglo") != 0) {
             ASTNode *assignment = parse_assignment(parser);
