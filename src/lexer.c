@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include <ctype.h>
 
 static char lexer_current(Lexer *lexer) {
     if (lexer->position >= lexer->length) return '\0';
@@ -26,11 +27,11 @@ static char lexer_advance_char(Lexer *lexer) {
 }
 
 static bool is_identifier_start(char c) {
-    return isalpha(c) || c == '_' || c >= 0x80;
+    return isalpha((unsigned char)c) || c == '_' || (unsigned char)c >= 0x80;
 }
 
 static bool is_identifier_char(char c) {
-    return isalnum(c) || c == '_' || c >= 0x80;
+    return isalnum((unsigned char)c) || c == '_' || (unsigned char)c >= 0x80;
 }
 
 static bool is_keyword(const char *str) {
@@ -104,7 +105,7 @@ static void lexer_skip_whitespace_and_comments(Lexer *lexer) {
     while (!done) {
         done = true;
         
-        while (isspace(lexer_current(lexer))) {
+        while (isspace((unsigned char)lexer_current(lexer))) {
             lexer_advance_char(lexer);
             done = false;
         }
@@ -374,7 +375,7 @@ Token lexer_next_token(Lexer *lexer) {
     token = lexer_create_token(lexer, TOKEN_ERROR, "carácter desconocido");
     char err_msg[64];
     snprintf(err_msg, sizeof(err_msg), "Carácter inesperado: '%c'", c);
-    milena_error_set(&lexer->error, MILENA_ERROR_LEXICAL, err_msg, lexer->line, lexer->column);
+    milena_error_set(&lexer->error, MILENA_ERR_PARSE, (size_t)lexer->line, (size_t)lexer->column, 0, err_msg);
     lexer_advance_char(lexer);
     lexer->current_token = token;
     return token;
@@ -408,8 +409,7 @@ bool lexer_match(Lexer *lexer, TokenType type) {
 
 bool lexer_expect(Lexer *lexer, TokenType type, const char *error_msg) {
     if (lexer->current_token.type != type) {
-        milena_error_set(&lexer->error, MILENA_ERROR_SYNTAX, error_msg, 
-                      lexer->current_token.line, lexer->current_token.column);
+        milena_error_set(&lexer->error, MILENA_ERR_PARSE, (size_t)lexer->current_token.line, (size_t)lexer->current_token.column, 0, error_msg);
         return false;
     }
     return true;
