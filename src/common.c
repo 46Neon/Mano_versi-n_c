@@ -1,8 +1,18 @@
 #include "common.h"
 
+static MilenaErrorCategory error_category(MilenaStatus code) {
+    if (code == MILENA_ERR_PARSE) return MILENA_ERROR_SINTAXIS;
+    if (code == MILENA_ERR_TYPE) return MILENA_ERROR_TIPO;
+    if (code == MILENA_ERR_DATA) return MILENA_ERROR_DATOS;
+    if (code == MILENA_ERR_MEMORY) return MILENA_ERROR_MEMORIA;
+    if (code == MILENA_ERR_ARGUMENT || code == MILENA_ERR_INTERNAL) return MILENA_ERROR_EJECUCION;
+    return MILENA_ERROR_NINGUNO;
+}
+
 void milena_error_clear(MilenaError *error) {
     if (!error) return;
     error->code = MILENA_OK;
+    error->category = MILENA_ERROR_NINGUNO;
     error->line = error->column = error->row = 0;
     error->message[0] = '\0';
 }
@@ -11,6 +21,7 @@ void milena_error_set(MilenaError *error, MilenaStatus code, size_t line,
                     size_t column, size_t row, const char *message) {
     if (!error) return;
     error->code = code;
+    error->category = error_category(code);
     error->line = line;
     error->column = column;
     error->row = row;
