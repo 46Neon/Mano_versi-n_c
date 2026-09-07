@@ -782,8 +782,8 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
         return MILENA_ERR_PARSE;
     }
 
-    const char *operations[] = {"shape(", "ndim(", "size(", "sum("};
-    for (size_t operation = 0; operation < 4; operation++) {
+    const char *operations[] = {"shape(", "ndim(", "size(", "sum(", "mean(", "min(", "max(", "variance(", "std("};
+    for (size_t operation = 0; operation < 9; operation++) {
         const char *position = script;
         while ((position = strstr(position, operations[operation])) != NULL) {
             position += strlen(operations[operation]);
@@ -816,16 +816,28 @@ static MilenaStatus run_array_declarations(const char *script, MilenaError *erro
                 printf("size(%s) = %zu\n", name, binding->array.size);
             } else {
                 MilenaArray result = {0};
-                MilenaStatus sum_status = milena_array_sum(&result, &binding->array,
-                                                            -1, false, error);
-                if (sum_status != MILENA_OK) goto array_cleanup_error;
-                if (result.dtype == MILENA_DTYPE_INT64) {
-                    printf("sum(%s) = %lld\n", name,
+                MilenaStatus stat_status;
+                if (operation == 3) stat_status = milena_array_sum(
+                    &result, &binding->array, -1, false, error);
+                else if (operation == 4) stat_status = milena_array_mean(
+                    &result, &binding->array, error);
+                else if (operation == 5) stat_status = milena_array_min(
+                    &result, &binding->array, error);
+                else if (operation == 6) stat_status = milena_array_max(
+                    &result, &binding->array, error);
+                else if (operation == 7) stat_status = milena_array_variance(
+                    &result, &binding->array, error);
+                else stat_status = milena_array_std(&result, &binding->array, error);
+                if (stat_status != MILENA_OK) goto array_cleanup_error;
+                const char *label = operation == 3 ? "sum" : operation == 4 ? "mean" :
+                    operation == 5 ? "min" : operation == 6 ? "max" :
+                    operation == 7 ? "variance" : "std";
+                if (operation == 3 && result.dtype == MILENA_DTYPE_INT64)
+                    printf("%s(%s) = %lld\n", label, name,
                            (long long)*(const int64_t *)milena_array_const_data(&result));
-                } else {
-                    printf("sum(%s) = %.17g\n", name,
+                else
+                    printf("%s(%s) = %.17g\n", label, name,
                            *(const double *)milena_array_const_data(&result));
-                }
                 milena_array_release(&result);
             }
             position = name_end + 1;
