@@ -49,5 +49,6 @@ int main(void) {
     assert(assignment->children[0]->children[1]->number_value == 2.0);
 
     ast_destroy(program);
+    parser_release(&parser);
     return 0;
 }
