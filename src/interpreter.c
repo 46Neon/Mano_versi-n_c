@@ -16,8 +16,20 @@ static bool invoke(Interpreter*i,ASTNode*f,ASTNode*call,Runtime*parent,double*ou
         if(x->type==AST_CONDICION_SI){
             double c;if(!eval_expr(i,x->children[0],&child,&c))goto fail;
             ASTNode *branch=NULL; size_t begin=0, branch_count=0;
-            if(c){branch=x;begin=1;branch_count=x->child_count;}
-            else if(x->child_count>1&&x->children[x->child_count-1]->type==AST_BLOQUE_FUNCION){branch=x->children[x->child_count-1];branch_count=branch->child_count;}
+            if(c){
+                branch=x;
+                begin=1;
+                /* The final child is the optional else block, not part of
+                 * the true branch.  Keeping it out is important when the
+                 * true branch does not return (for example, local setup). */
+                branch_count=x->child_count;
+                if(branch_count>1 &&
+                   x->children[branch_count-1]->type==AST_BLOQUE_FUNCION)
+                    --branch_count;
+            } else if(x->child_count>1&&x->children[x->child_count-1]->type==AST_BLOQUE_FUNCION){
+                branch=x->children[x->child_count-1];
+                branch_count=branch->child_count;
+            }
             if(branch) for(size_t j=begin;j<branch_count;j++){ASTNode*y=branch->children[j];
                 if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}
                 if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}
@@ -189,3 +201,4 @@ void interpreter_destroy(Interpreter *interpreter) {
     if(r){for(size_t i=0;i<r->count;i++)free(r->items[i].name);free(r->items);free(r);}
     interpreter->runtime=NULL;
 }
+
