@@ -32,10 +32,6 @@ static MilenaStatus table_reserve(MilenaTable *table, size_t required,
         }
         capacity *= 2;
     }
-    if (capacity > SIZE_MAX / sizeof(MilenaTableColumn)) {
-        table_error(error, MILENA_ERR_OVERFLOW, "Demasiadas columnas en la tabla");
-        return MILENA_ERR_OVERFLOW;
-    }
     MilenaTableColumn *columns = (MilenaTableColumn *)realloc(
         table->columns, capacity * sizeof(MilenaTableColumn));
     if (!columns) {
@@ -97,12 +93,6 @@ MilenaStatus milena_table_add_column_copy(MilenaTable *table,
     }
 
     bool *validity_copy = NULL;
-    if (values->size > SIZE_MAX / sizeof(bool)) {
-        free(name_copy);
-        milena_array_release(&values_copy);
-        table_error(error, MILENA_ERR_OVERFLOW, "La máscara de validez es demasiado grande");
-        return MILENA_ERR_OVERFLOW;
-    }
     if (values->size > 0) {
         validity_copy = (bool *)malloc(values->size * sizeof(bool));
         if (!validity_copy) {

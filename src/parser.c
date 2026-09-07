@@ -9,11 +9,6 @@ void parser_init(Parser *parser, Lexer *lexer) {
     milena_symbols_init(&parser->symbols);
 }
 
-void parser_release(Parser *parser) {
-    if (!parser) return;
-    milena_symbols_release(&parser->symbols);
-}
-
 void parser_error(Parser *parser, const char *msg) {
     milena_error_set(&parser->error, MILENA_ERR_PARSE,
                      parser->current.line, parser->current.column, 0, msg);
@@ -101,131 +96,71 @@ static ASTNode *parse_array_declaration(Parser *parser) {
         parser_error(parser, "No se pudo crear la declaración del array");
         return NULL;
     }
-    if (milena_symbols_declare(&parser->symbols, name, &parser->error) != MILENA_OK) {
-        ast_destroy(declaration);
-        ast_destroy(array);
-        parser->has_error = true;
-        return NULL;
-    }
     ast_add_child(declaration, array);
     return declaration;
 }
 
-static bool parser_is_identifier_token(const Parser *parser) {
-    return parser_match((Parser *)parser, TOKEN_IDENTIFICADOR) ||
-           parser_match((Parser *)parser, TOKEN_KW_TOTAL);
-}
-
-static ASTNode *parse_expression(Parser *parser) {
-    ASTNode *left = NULL;
+static ASTNode *parse_variable_declaration(Parser *parser) {
+    parser_advance(parser);
+    if (!parser_expect(parser, TOKEN_IDENTIFICADOR, "Se esperaba nombre de variable")) return NULL;
+    char name[MAX_TOKEN_LEN];
+    strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
+    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
+    ASTNode *value = NULL;
     if (parser_match(parser, TOKEN_NUMERO)) {
         parser_advance(parser);
-        left = ast_create_number(parser->previous.number_value);
-    } else if (parser_is_identifier_token(parser)) {
+        value = ast_create_number(parser->previous.number_value);
+    } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
         if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
-            parser_error(parser, "La variable usada no ha sido declarada");
-            return NULL;
+            parser_error(parser, "La variable usada no ha sido declarada"); return NULL;
         }
-        left = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
+        value = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
         parser_advance(parser);
-    } else {
-        parser_error(parser, "Se esperaba una expresión numérica");
-        return NULL;
-    }
-    if (!left) {
-        parser_error(parser, "No se pudo crear la expresión");
-        return NULL;
-    }
-
-    while (parser_match(parser, TOKEN_MAS) || parser_match(parser, TOKEN_MENOS)) {
+    } else { parser_error(parser, "La variable necesita una expresión numérica"); return NULL; }
+    if ((parser_match(parser, TOKEN_MAS) || parser_match(parser, TOKEN_MENOS)) && value) {
         TokenType operator_type = parser->current.type;
         parser_advance(parser);
         ASTNode *right = NULL;
         if (parser_match(parser, TOKEN_NUMERO)) {
             parser_advance(parser);
             right = ast_create_number(parser->previous.number_value);
-        } else if (parser_is_identifier_token(parser)) {
-            if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) {
-                ast_destroy(left);
-                parser_error(parser, "La variable usada no ha sido declarada");
-                return NULL;
-            }
+        } else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+            if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) { ast_destroy(value); parser_error(parser, "La variable usada no ha sido declarada"); return NULL; }
             right = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme);
             parser_advance(parser);
-        } else {
-            ast_destroy(left);
-            parser_error(parser, "Se esperaba un valor después del operador");
-            return NULL;
-        }
+        } else { ast_destroy(value); parser_error(parser, "Se esperaba un valor después del operador"); return NULL; }
         ASTNode *operation = ast_create_leaf(AST_EXPRESION_OPERACION,
                                              operator_type == TOKEN_MAS ? "+" : "-");
-        if (!operation || !right) {
-            ast_destroy(left);
-            ast_destroy(right);
-            ast_destroy(operation);
-            parser_error(parser, "No se pudo crear la expresión");
-            return NULL;
-        }
-        ast_add_child(operation, left);
-        ast_add_child(operation, right);
-        left = operation;
+        if (!operation || !right) { ast_destroy(value); ast_destroy(operation); ast_destroy(right); parser_error(parser, "No se pudo crear la expresión"); return NULL; }
+        ast_add_child(operation, value); ast_add_child(operation, right); value = operation;
     }
-    return left;
-}
-
-static ASTNode *parse_variable_declaration(Parser *parser) {
-    parser_advance(parser);
-    if (!parser_is_identifier_token(parser)) {
-        parser_error(parser, "Se esperaba nombre de variable");
-        return NULL;
-    }
-    parser_advance(parser);
-    char name[MAX_TOKEN_LEN];
-    strncpy(name, parser->previous.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
-    if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
-    ASTNode *value = parse_expression(parser);
-    if (!value) return NULL;
     if (milena_symbols_declare(&parser->symbols, name, &parser->error) != MILENA_OK) {
         parser->has_error = true;
-        ast_destroy(value);
         return NULL;
     }
     ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
-    if (!node) {
-        ast_destroy(value);
-        parser_error(parser, "No se pudo crear la variable");
-        return NULL;
-    }
+    if (!node || !value) { ast_destroy(node); ast_destroy(value); parser_error(parser, "No se pudo crear la variable"); return NULL; }
     ast_add_child(node, value);
-    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la variable")) {
-        ast_destroy(node);
-        return NULL;
-    }
+    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la variable")) { ast_destroy(node); return NULL; }
     return node;
 }
 
 static ASTNode *parse_assignment(Parser *parser) {
     char name[MAX_TOKEN_LEN];
     strncpy(name, parser->current.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
-    if (!milena_symbols_exists(&parser->symbols, name)) {
-        parser_error(parser, "La variable asignada no ha sido declarada");
-        return NULL;
-    }
+    if (!milena_symbols_exists(&parser->symbols, name)) { parser_error(parser, "La variable asignada no ha sido declarada"); return NULL; }
     parser_advance(parser);
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la asignación")) return NULL;
-    ASTNode *value = parse_expression(parser);
-    if (!value) return NULL;
+    ASTNode *value = NULL;
+    if (parser_match(parser, TOKEN_NUMERO)) { parser_advance(parser); value = ast_create_number(parser->previous.number_value); }
+    else if (parser_match(parser, TOKEN_IDENTIFICADOR)) {
+        if (!milena_symbols_exists(&parser->symbols, parser->current.lexeme)) { parser_error(parser, "La variable usada no ha sido declarada"); return NULL; }
+        value = ast_create_leaf(AST_EXPRESION_IDENTIFICADOR, parser->current.lexeme); parser_advance(parser);
+    } else { parser_error(parser, "Se esperaba valor en la asignación"); return NULL; }
     ASTNode *node = ast_create_leaf(AST_ASIGNACION_VARIABLE, name);
-    if (!node) {
-        ast_destroy(value);
-        parser_error(parser, "No se pudo crear la asignación");
-        return NULL;
-    }
+    if (!node || !value) { ast_destroy(node); ast_destroy(value); return NULL; }
     ast_add_child(node, value);
-    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la asignación")) {
-        ast_destroy(node);
-        return NULL;
-    }
+    if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA, "Se esperaba ';' después de la asignación")) { ast_destroy(node); return NULL; }
     return node;
 }
 
@@ -248,8 +183,7 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
         if (parser_match(parser, TOKEN_KW_VARIABLE)) {
             ASTNode *declaration = parse_variable_declaration(parser);
             if (declaration) ast_add_child(node, declaration);
-        } else if ((parser_match(parser, TOKEN_IDENTIFICADOR) ||
-                   parser_match(parser, TOKEN_KW_TOTAL)) &&
+        } else if (parser_match(parser, TOKEN_IDENTIFICADOR) &&
                    strcmp(parser->current.lexeme, "array") != 0 &&
                    strcmp(parser->current.lexeme, "arreglo") != 0) {
             ASTNode *assignment = parse_assignment(parser);
@@ -381,31 +315,26 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
 }
 
 ASTNode* parser_parse(Parser *parser) {
-    if (!parser) return NULL;
     ASTNode *program = ast_create(AST_PROGRAMA);
     if (!program) {
         parser_error(parser, "Error de memoria");
         return NULL;
     }
-
-    /* A program may contain a sequence of top-level statistical calls. */
+    
     if (parser->current.type == TOKEN_FUNCION_MEDIANA ||
         parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-        while (parser->current.type == TOKEN_FUNCION_MEDIANA ||
-               parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-            ASTNode *statistic = parser_parse_statistical_call(parser);
-            if (!statistic) break;
-            ast_add_child(program, statistic);
-            if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
-        }
+        ASTNode *statistic = parser_parse_statistical_call(parser);
+        if (statistic) ast_add_child(program, statistic);
+        if (parser_match(parser, TOKEN_PUNTO_Y_COMA)) parser_advance(parser);
     } else {
         ASTNode *analisis = parse_bloque_analisis(parser);
         if (analisis) ast_add_child(program, analisis);
     }
-
+    
     if (!parser_match(parser, TOKEN_EOF)) {
         parser_error(parser, "Se esperaba fin de archivo");
     }
+    
     return program;
 }
 

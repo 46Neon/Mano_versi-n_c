@@ -195,24 +195,3 @@ Las contribuciones deben mantener la portabilidad, los errores explícitos, las 
 ## 📄 Licencia
 
 Milena se distribuye bajo la licencia MIT.
-
-## Termux / Android ARM64
-
-Milena ha sido compilado y probado en Termux sobre Android ARM64 (`aarch64`) en la rama `parser/semantic-spanish`.
-
-Requisitos mínimos:
-
-```sh
-pkg update
-pkg install clang make
-```
-
-Compilación y pruebas:
-
-```sh
-make clean
-make
-make test
-```
-
-La validación incluye arreglos, tablas, finanzas, bosques, arena temporal, módulos SST y pruebas del parser. Los avisos del compilador no impidieron la ejecución de la suite. El rendimiento y los límites para datasets muy grandes siguen requiriendo mediciones específicas por dispositivo; esta evidencia no constituye todavía una garantía de procesamiento industrial ilimitado.
