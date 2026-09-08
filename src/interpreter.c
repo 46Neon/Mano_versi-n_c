@@ -5,24 +5,83 @@ typedef struct { char *name; double value; } Binding;
 typedef struct Runtime { Binding *items; size_t count; struct Runtime *parent; unsigned depth; } Runtime;
 static double rt_value(Runtime*r,const char*n,bool*ok){for(;r;r=r->parent)for(size_t i=r->count;i>0;i--)if(strcmp(r->items[i-1].name,n)==0){*ok=true;return r->items[i-1].value;}*ok=false;return 0;}
 static bool eval_expr(Interpreter*i,ASTNode*n,Runtime*r,double*out);
-static bool invoke(Interpreter*i,ASTNode*f,ASTNode*call,Runtime*parent,double*out){
-    if(!f||f->child_count<2||f->children[0]->child_count!=call->child_count)return false;
-    if(parent->depth>=1000)return false;
-    Runtime child={0};child.parent=parent;child.depth=parent->depth+1;size_t pc=f->children[0]->child_count;
-    child.items=calloc(pc?pc:1,sizeof(Binding));if(!child.items&&pc)return false;child.count=pc;
-    for(size_t k=0;k<pc;k++){double v;if(!eval_expr(i,call->children[k],parent,&v))goto fail;child.items[k].name=milena_strdup(f->children[0]->children[k]->value);if(!child.items[k].name)goto fail;child.items[k].value=v;}
-    for(size_t k=0;k<f->children[1]->child_count;k++){ASTNode*x=f->children[1]->children[k];
-        if(x->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,x->children[0],&child,out))goto fail;goto done;}
-        if(x->type==AST_CONDICION_SI){double c;if(!eval_expr(i,x->children[0],&child,&c))goto fail;size_t begin=c?1:x->child_count;
-            if(!c&&x->child_count>1&&x->children[x->child_count-1]->type==AST_BLOQUE_FUNCION){ASTNode*eb=x->children[x->child_count-1];for(size_t j=0;j<eb->child_count;j++){ASTNode*y=eb->children[j];if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}}} }
-            else if(c) begin=1;
-            if(c){for(size_t j=begin;j<x->child_count;j++){ASTNode*y=x->children[j];if(y->type==AST_COMANDO_RETORNAR){if(!eval_expr(i,y->children[0],&child,out))goto fail;goto done;}if(y->type==AST_DECLARACION_VARIABLE||y->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,y->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(y->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}}}
-        } else if(x->type==AST_DECLARACION_VARIABLE||x->type==AST_ASIGNACION_VARIABLE){double v;if(!eval_expr(i,x->children[0],&child,&v))goto fail;Binding*z=realloc(child.items,(child.count+1)*sizeof(*z));if(!z)goto fail;child.items=z;child.items[child.count].name=milena_strdup(x->value);if(!child.items[child.count].name)goto fail;child.items[child.count++].value=v;}
+static bool invoke(Interpreter *i, ASTNode *f, ASTNode *call,
+                    Runtime *parent, double *out) {
+    if (!f || f->child_count < 2 ||
+        f->children[0]->child_count != call->child_count) return false;
+    if (parent->depth >= 1000) return false;
+
+    Runtime child = {0};
+    child.parent = parent;
+    child.depth = parent->depth + 1;
+    size_t parameter_count = f->children[0]->child_count;
+    child.items = calloc(parameter_count ? parameter_count : 1,
+                          sizeof(Binding));
+    if (!child.items && parameter_count) return false;
+    child.count = parameter_count;
+
+    for (size_t k = 0; k < parameter_count; k++) {
+        double value;
+        if (!eval_expr(i, call->children[k], parent, &value)) goto fail;
+        child.items[k].name = milena_strdup(
+            f->children[0]->children[k]->value);
+        if (!child.items[k].name) goto fail;
+        child.items[k].value = value;
     }
-    *out=0;
-done: for(size_t k=0;k<child.count;k++)free(child.items[k].name);free(child.items);return true;
-fail: for(size_t k=0;k<child.count;k++)free(child.items[k].name);free(child.items);return false;
+
+    for (size_t k = 0; k < f->children[1]->child_count; k++) {
+        ASTNode *node = f->children[1]->children[k];
+        if (node->type == AST_COMANDO_RETORNAR) {
+            if (!eval_expr(i, node->children[0], &child, out)) goto fail;
+            goto done;
+        }
+        if (node->type == AST_CONDICION_SI) {
+            double condition;
+            if (!eval_expr(i, node->children[0], &child, &condition)) goto fail;
+            if (condition != 0.0) {
+                for (size_t j = 1; j < node->child_count; j++) {
+                    ASTNode *body_node = node->children[j];
+                    if (body_node->type == AST_COMANDO_RETORNAR) {
+                        if (!eval_expr(i, body_node->children[0], &child, out)) goto fail;
+                        goto done;
+                    }
+                }
+            } else if (node->child_count > 1 &&
+                       node->children[node->child_count - 1]->type == AST_BLOQUE_FUNCION) {
+                ASTNode *else_block = node->children[node->child_count - 1];
+                for (size_t j = 0; j < else_block->child_count; j++) {
+                    ASTNode *body_node = else_block->children[j];
+                    if (body_node->type == AST_COMANDO_RETORNAR) {
+                        if (!eval_expr(i, body_node->children[0], &child, out)) goto fail;
+                        goto done;
+                    }
+                }
+            }
+        } else if (node->type == AST_DECLARACION_VARIABLE ||
+                   node->type == AST_ASIGNACION_VARIABLE) {
+            double value;
+            if (!eval_expr(i, node->children[0], &child, &value)) goto fail;
+            Binding *binding = realloc(child.items,
+                                       (child.count + 1) * sizeof(*binding));
+            if (!binding) goto fail;
+            child.items = binding;
+            child.items[child.count].name = milena_strdup(node->value);
+            if (!child.items[child.count].name) goto fail;
+            child.items[child.count++].value = value;
+        }
+    }
+
+    *out = 0.0;
+done:
+    for (size_t k = 0; k < child.count; k++) free(child.items[k].name);
+    free(child.items);
+    return true;
+fail:
+    for (size_t k = 0; k < child.count; k++) free(child.items[k].name);
+    free(child.items);
+    return false;
 }
+
 static bool eval_expr(Interpreter*i,ASTNode*n,Runtime*r,double*out){if(!n||!out)return false;
     if(n->type==AST_EXPRESION_LITERAL){*out=n->number_value;return true;} if(n->type==AST_EXPRESION_IDENTIFICADOR){bool ok;*out=rt_value(r,n->value,&ok);return ok;}
     if(n->type==AST_EXPRESION_OPERACION){double a,b;if(!eval_expr(i,n->children[0],r,&a)||!eval_expr(i,n->children[1],r,&b))return false;const char*o=n->value;if(strcmp(o,"+")==0)*out=a+b;else if(strcmp(o,"-")==0)*out=a-b;else if(strcmp(o,"*")==0)*out=a*b;else if(strcmp(o,"/")==0){if(b==0)return false;*out=a/b;}else if(strcmp(o,"==")==0)*out=a==b;else if(strcmp(o,"!=")==0)*out=a!=b;else if(strcmp(o,">")==0)*out=a>b;else if(strcmp(o,">=")==0)*out=a>=b;else if(strcmp(o,"<")==0)*out=a<b;else if(strcmp(o,"<=")==0)*out=a<=b;else return false;return true;}
