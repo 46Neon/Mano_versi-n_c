@@ -5,6 +5,12 @@ void parser_release(Parser *parser) {
 }
 #include "parser.h"
 
+void parser_release(Parser *parser) {
+    if (!parser) return;
+    milena_symbols_release(&parser->symbols);
+}
+
+
 void parser_init(Parser *parser, Lexer *lexer) {
     parser->lexer = lexer;
     parser->current = lexer_next_token(lexer);
