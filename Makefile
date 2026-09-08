@@ -68,7 +68,7 @@ test-parser-variables: tests/test_parser_variables
 test-functions: tests/test_functions
 	./tests/test_functions
 
-tests/test_functions: tests/test_functions.c src/parser.c src/lexer.c src/ast.c src/interpreter.c src/symbol.c src/symbol_table.c src/dataset.c src/common.c src/function_parser.c src/user_functions.c
+tests/test_functions: tests/test_functions.c src/parser.c src/lexer.c src/ast.c src/interpreter.c src/symbol.c src/symbol_table.c src/dataset.c src/common.c
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 tests/test_parser_variables: tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c

@@ -184,13 +184,14 @@ static ASTNode *parse_variable_declaration(Parser *parser) {
     strncpy(name, parser->current.lexeme, sizeof(name) - 1); name[sizeof(name) - 1] = '\0';
     parser_advance(parser);
     if (!parser_expect(parser, TOKEN_IGUAL, "Se esperaba '=' en la declaración de variable")) return NULL;
-    ASTNode *value = parse_expression(parser);
-    if (!value) return NULL;
+    /* Register the name before parsing its initializer so the declaration
+       participates in the same scope rules as subsequent expressions. */
     if (milena_symbols_declare(&parser->symbols, name, &parser->error) != MILENA_OK) {
         parser->has_error = true;
-        ast_destroy(value);
         return NULL;
     }
+    ASTNode *value = parse_expression(parser);
+    if (!value) return NULL;
     ASTNode *node = ast_create_leaf(AST_DECLARACION_VARIABLE, name);
     if (!node) {
         ast_destroy(value);
