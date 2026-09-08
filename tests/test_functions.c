@@ -13,6 +13,10 @@ int main(void) {
         "variable resultado = factorial(5); variable positivo = signo(3);";
     Lexer l; Parser p; lexer_init(&l, src); parser_init(&p, &l);
     ASTNode *tree = parser_parse(&p);
+    if (p.has_error) {
+        fprintf(stderr, "parser diagnostic: code=%d line=%zu column=%zu message=%s\n",
+                p.error.code, p.error.line, p.error.column, p.error.message);
+    }
     assert(tree && !p.has_error);
     Interpreter vm; assert(interpreter_init(&vm, tree));
     assert(interpreter_run(&vm));
