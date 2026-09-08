@@ -391,35 +391,66 @@ static ASTNode* parse_bloque_analisis(Parser *parser) {
     return node;
 }
 
-ASTNode* parser_parse(Parser *parser) {
-    ASTNode *program = ast_create(AST_PROGRAMA);
-    if (!program) {
-        parser_error(parser, "Error de memoria");
+static ASTNode *parse_declaracion(Parser *parser) {
+    if (!parser) return NULL;
+    if (parser_match(parser, TOKEN_KW_FUNCION)) {
+        parser_error(parser, "El parser de funciones aún no está implementado");
         return NULL;
     }
-    
-    if (parser->current.type == TOKEN_FUNCION_MEDIANA ||
-        parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-        while (parser->current.type == TOKEN_FUNCION_MEDIANA ||
-               parser->current.type == TOKEN_FUNCION_PERCENTIL) {
-            ASTNode *statistic = parser_parse_statistical_call(parser);
-            if (!statistic) break;
-            ast_add_child(program, statistic);
-            if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA,
-                               "Se esperaba ';' después de la operación estadística")) {
-                break;
-            }
+    if (parser_match(parser, TOKEN_KW_VARIABLE)) {
+        return parse_variable_declaration(parser);
+    }
+    if (parser_match(parser, TOKEN_PUNTO)) {
+        return parse_bloque_analisis(parser);
+    }
+    if (parser_match(parser, TOKEN_FUNCION_MEDIANA) ||
+        parser_match(parser, TOKEN_FUNCION_PERCENTIL)) {
+        ASTNode *node = parser_parse_statistical_call(parser);
+        if (!node) return NULL;
+        if (!parser_expect(parser, TOKEN_PUNTO_Y_COMA,
+                           "Se esperaba ';' después de la operación estadística")) {
+            ast_destroy(node);
+            return NULL;
         }
-    } else {
-        ASTNode *analisis = parse_bloque_analisis(parser);
-        if (analisis) ast_add_child(program, analisis);
+        return node;
     }
-    
-    if (!parser_match(parser, TOKEN_EOF)) {
-        parser_error(parser, "Se esperaba fin de archivo");
+    parser_error(parser, "Se esperaba una declaración");
+    return NULL;
+}
+
+static ASTNode *parse_programa(Parser *parser) {
+    ASTNode *program = ast_create(AST_PROGRAMA);
+    if (!program) {
+        parser_error(parser, "No se pudo crear el programa");
+        return NULL;
     }
-    
+    while (!parser_match(parser, TOKEN_EOF)) {
+        Token before = parser->current;
+        ASTNode *declaration = parse_declaracion(parser);
+        if (!declaration) {
+            ast_destroy(program);
+            return NULL;
+        }
+        if (!ast_add_child(program, declaration)) {
+            ast_destroy(declaration);
+            ast_destroy(program);
+            parser_error(parser, "No se pudo añadir la declaración al programa");
+            return NULL;
+        }
+        if (parser->current.type == before.type &&
+            parser->current.line == before.line &&
+            parser->current.column == before.column) {
+            ast_destroy(program);
+            parser_error(parser, "El parser no avanzó después de la declaración");
+            return NULL;
+        }
+    }
     return program;
+}
+
+ASTNode* parser_parse(Parser *parser) {
+    if (!parser) return NULL;
+    return parse_programa(parser);
 }
 
 ASTNode* parser_parse_statistical_call(Parser *parser) {
