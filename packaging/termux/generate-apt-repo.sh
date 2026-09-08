@@ -64,10 +64,11 @@ GPG_ARGS=(--batch --yes --local-user "$KEY_ID")
 PASSPHRASE_FILE=""
 cleanup_passphrase() { [[ -z "$PASSPHRASE_FILE" ]] || rm -f "$PASSPHRASE_FILE"; }
 trap cleanup_passphrase EXIT
-if [[ -n "${MANO_GPG_PASSPHRASE:-}" ]]; then
+PASSPHRASE="${MILENA_GPG_PASSPHRASE:-${MANO_GPG_PASSPHRASE:-}}"
+if [[ -n "$PASSPHRASE" ]]; then
     PASSPHRASE_FILE="$OUTPUT_DIR/.gpg-passphrase"
     umask 077
-    printf '%s' "$MANO_GPG_PASSPHRASE" > "$PASSPHRASE_FILE"
+    printf '%s' "$PASSPHRASE" > "$PASSPHRASE_FILE"
     GPG_ARGS+=(--pinentry-mode loopback --passphrase-file "$PASSPHRASE_FILE")
 fi
 gpg "${GPG_ARGS[@]}" --clearsign \
