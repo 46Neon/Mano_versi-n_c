@@ -5,8 +5,9 @@ SOURCES = src/common.c src/array.c src/table.c src/finance.c src/schema.c src/da
           src/sst_dates.c src/sst_model.c src/sst_stats.c src/sst_histogram.c \
           src/sst_rates.c src/sst_report.c src/sst_report_advanced.c \
           src/sst_advanced.c src/sst_contingency.c src/sst_inference.c \
-          src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c src/function_parser.c src/user_functions.c
+          src/sst_correlation.c src/sst_normality.c src/logger.c src/metrics.c
 OBJECTS = $(SOURCES:.c=.o)
+FUNCTION_OBJECTS = src/function_parser.o src/user_functions.o
 TARGET = milena
 
 .PHONY: all clean test test-sst test-array test-table test-finance test-language-array test-parser-array test-parser-variables test-functions debug
@@ -67,7 +68,7 @@ test-parser-variables: tests/test_parser_variables
 test-functions: tests/test_functions
 	./tests/test_functions
 
-tests/test_functions: tests/test_functions.c src/parser.c src/lexer.c src/ast.c src/interpreter.c src/symbol.c src/symbol_table.c src/dataset.c src/common.c
+tests/test_functions: tests/test_functions.c src/parser.c src/lexer.c src/ast.c src/interpreter.c src/symbol.c src/symbol_table.c src/dataset.c src/common.c src/function_parser.c src/user_functions.c
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 tests/test_parser_variables: tests/test_parser_variables.c src/parser.c src/lexer.c src/ast.c src/common.c src/symbol_table.c
@@ -81,8 +82,8 @@ SST_TEST_SOURCES = src/common.c src/sst_dates.c src/sst_model.c \
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) $(LDFLAGS) -o $@
+$(TARGET): $(OBJECTS) $(FUNCTION_OBJECTS)
+	$(CC) $(CFLAGS) $(OBJECTS) $(FUNCTION_OBJECTS) $(LDFLAGS) -o $@
 
 test-sst: tests/test_sst_modules
 	./tests/test_sst_modules
