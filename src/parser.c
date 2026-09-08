@@ -431,12 +431,7 @@ static ASTNode *parse_programa(Parser *parser) {
             ast_destroy(program);
             return NULL;
         }
-        if (!ast_add_child(program, declaration)) {
-            ast_destroy(declaration);
-            ast_destroy(program);
-            parser_error(parser, "No se pudo añadir la declaración al programa");
-            return NULL;
-        }
+        ast_add_child(program, declaration);
         if (parser->current.type == before.type &&
             parser->current.line == before.line &&
             parser->current.column == before.column) {
