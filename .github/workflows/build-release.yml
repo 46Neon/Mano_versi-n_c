@@ -1,4 +1,4 @@
-name: Build Mano release artifacts
+name: Build Milena release artifacts
 
 on:
   workflow_dispatch:
@@ -18,17 +18,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y clang make dpkg-dev
-
       - name: Build and test Debian package
         run: ./packaging/debian/build-local-deb.sh
-
       - name: Upload Debian artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mano-debian-amd64
+          name: milena-debian-amd64
           path: dist/debian/*.deb
 
   windows-x64:
@@ -36,20 +33,51 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install LLVM
         shell: pwsh
         run: choco install llvm --no-progress -y
-
       - name: Build Windows executable
         shell: pwsh
+        env:
+          MILENA_VERSION: ${{ github.ref_name }}
         run: ./packaging/windows/build.ps1
-
-      - name: Upload Windows artifact
+      - name: Run Windows executable smoke test
+        shell: pwsh
+        run: |
+          $output = & ./dist/windows/milena.exe 2>&1
+          if ($LASTEXITCODE -ne 2) { throw "milena.exe sin argumentos debe terminar con código 2; obtuvo $LASTEXITCODE" }
+          if ($output -notmatch 'Milena') { throw 'La salida de milena.exe no contiene la identidad esperada' }
+      - name: Run Windows runtime tests
+        shell: pwsh
+        run: |
+          $flags = @('-std=c17','-Wall','-Wextra','-Wpedantic','-O2','-Iinclude')
+          & clang @flags tests/test_array.c src/array.c src/common.c -o dist/windows/test_array.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_array en Windows' }
+          & ./dist/windows/test_array.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_array en Windows' }
+          & clang @flags tests/test_forest.c src/forest.c src/array.c src/common.c -o dist/windows/test_forest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_forest en Windows' }
+          & ./dist/windows/test_forest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_forest en Windows' }
+          & clang @flags tests/test_finance.c src/finance.c src/common.c -o dist/windows/test_finance.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_finance en Windows' }
+          & ./dist/windows/test_finance.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_finance en Windows' }
+      - name: Verify Windows artifacts
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/windows/milena.exe)) { throw 'Falta dist/windows/milena.exe' }
+          if (-not (Test-Path dist/windows/milena.exe.sha256)) { throw 'Falta el checksum Windows' }
+          $expected = (Get-Content dist/windows/milena.exe.sha256 -Raw).Trim().ToLowerInvariant()
+          $actual = (Get-FileHash -Algorithm SHA256 dist/windows/milena.exe).Hash.ToLowerInvariant()
+          if ($expected -ne $actual) { throw 'El checksum Windows no coincide' }
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mano-windows-x64
-          path: dist/windows/mano.exe
+          name: milena-windows-x64
+          path: |
+            dist/windows/milena.exe
+            dist/windows/milena.exe.sha256
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -61,15 +89,13 @@ jobs:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: mano-debian-amd64
+          name: milena-debian-amd64
           path: dist
-
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: mano-windows-x64
+          name: milena-windows-x64
           path: dist
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
