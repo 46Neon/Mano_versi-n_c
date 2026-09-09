@@ -44,11 +44,20 @@ jobs:
       - name: Run Windows executable smoke test
         shell: pwsh
         run: |
-          $output = & ./dist/windows/milena.exe 2>&1
-          if ($LASTEXITCODE -ne 2) { throw "milena.exe sin argumentos debe terminar con código 2; obtuvo $LASTEXITCODE" }
-          $text = ($output | Out-String)
+          $stdout = Join-Path $env:RUNNER_TEMP 'milena.stdout.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'milena.stderr.txt'
+          $process = Start-Process -FilePath (Resolve-Path './dist/windows/milena.exe') `
+            -Wait -PassThru -NoNewWindow `
+            -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = ((Get-Content $stdout -Raw -ErrorAction SilentlyContinue),
+                   (Get-Content $stderr -Raw -ErrorAction SilentlyContinue) -join "`n")
           Write-Host $text
-          if ($text -notmatch 'Milena') { throw 'La salida de milena.exe no contiene la identidad esperada' }
+          if ($process.ExitCode -ne 2) {
+            throw "milena.exe sin argumentos debe terminar con código 2; obtuvo $($process.ExitCode)"
+          }
+          if ($text -notmatch 'Milena') {
+            throw 'La salida de milena.exe no contiene la identidad esperada'
+          }
       - name: Run Windows runtime tests
         shell: pwsh
         run: |
@@ -85,8 +94,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [linux-amd64, windows-x64]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
