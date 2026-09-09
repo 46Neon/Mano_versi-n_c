@@ -74,7 +74,7 @@ jobs:
             @echo off
             milena.exe
             exit /b %ERRORLEVEL%
-'@ | Set-Content -Encoding ascii $batch
+            '@ | Set-Content -Encoding ascii $batch
             $cmdProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $batch `
               -WorkingDirectory $work -Wait -PassThru -NoNewWindow
             if ($cmdProcess.ExitCode -ne 2) { throw "CMD: código inesperado $($cmdProcess.ExitCode)" }
