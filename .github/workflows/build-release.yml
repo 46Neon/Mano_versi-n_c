@@ -69,7 +69,13 @@ jobs:
             & $exe
             if ($LASTEXITCODE -ne 2) { throw "PowerShell: código inesperado $LASTEXITCODE" }
             Copy-Item $exe (Join-Path $work 'milena.exe') -Force
-            $cmdProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', 'milena.exe' `
+            $batch = Join-Path $work 'run-milena.cmd'
+            @'
+            @echo off
+            milena.exe
+            exit /b %ERRORLEVEL%
+'@ | Set-Content -Encoding ascii $batch
+            $cmdProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $batch `
               -WorkingDirectory $work -Wait -PassThru -NoNewWindow
             if ($cmdProcess.ExitCode -ne 2) { throw "CMD: código inesperado $($cmdProcess.ExitCode)" }
           } finally {
