@@ -68,8 +68,10 @@ jobs:
           try {
             & $exe
             if ($LASTEXITCODE -ne 2) { throw "PowerShell: código inesperado $LASTEXITCODE" }
-            cmd.exe /d /c "`"$exe`""
-            if ($LASTEXITCODE -ne 2) { throw "CMD: código inesperado $LASTEXITCODE" }
+            Copy-Item $exe (Join-Path $work 'milena.exe') -Force
+            $cmdProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', 'milena.exe' `
+              -WorkingDirectory $work -Wait -PassThru -NoNewWindow
+            if ($cmdProcess.ExitCode -ne 2) { throw "CMD: código inesperado $($cmdProcess.ExitCode)" }
           } finally {
             Pop-Location
           }
