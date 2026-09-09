@@ -9,7 +9,7 @@ SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT_DIR" log -1 --format=%ct
 if [[ -z "$PREFIX_DIR" || "$PREFIX_DIR" != */usr ]]; then
     echo "Run this script inside Termux with PREFIX pointing to .../usr" >&2; exit 1
 fi
-for command in clang make dpkg dpkg-deb install; do
+for command in clang make dpkg dpkg-deb install strip; do
     command -v "$command" >/dev/null 2>&1 || { echo "Missing required command: $command" >&2; exit 1; }
 done
 cd "$ROOT_DIR"
@@ -24,8 +24,12 @@ rm -rf "$STAGE" "$DIST_DIR"/milena_*.deb
 mkdir -p "$STAGE/${PREFIX_DIR#/}/bin" "$STAGE/${PREFIX_DIR#/}/share/doc/milena" "$STAGE/DEBIAN" "$DIST_DIR"
 trap 'rm -rf "$STAGE"' EXIT
 install -m 0755 milena "$STAGE/${PREFIX_DIR#/}/bin/milena"
+# Remove symbols from release binaries to reduce download and disk size.
+strip --strip-unneeded "$STAGE/${PREFIX_DIR#/}/bin/milena"
 install -m 0644 README.md "$STAGE/${PREFIX_DIR#/}/share/doc/milena/README.md"
-cp -R examples "$STAGE/${PREFIX_DIR#/}/share/doc/milena/"
+if [[ "${MILENA_INCLUDE_EXAMPLES:-0}" == "1" ]]; then
+    cp -R examples "$STAGE/${PREFIX_DIR#/}/share/doc/milena/"
+fi
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: milena
 Version: $VERSION
@@ -42,7 +46,7 @@ find "$STAGE" -type f -exec chmod 0644 {} +
 chmod 0755 "$STAGE/${PREFIX_DIR#/}/bin/milena"
 find "$STAGE" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 OUTPUT="$DIST_DIR/milena_${VERSION}_aarch64.deb"
-dpkg-deb --build --root-owner-group "$STAGE" "$OUTPUT" >/dev/null
+dpkg-deb --build --root-owner-group -Z xz -z 9 "$STAGE" "$OUTPUT" >/dev/null
 dpkg-deb --info "$OUTPUT" >/dev/null
 dpkg-deb --contents "$OUTPUT" | grep -Fq "${PREFIX_DIR#/}/bin/milena"
 printf 'Package created: %s\n' "$OUTPUT"
