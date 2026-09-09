@@ -51,9 +51,9 @@ jobs:
               if (env && *env) rows = (size_t)strtoull(env, NULL, 10);
               FILE *f = fopen(path, "wb");
               assert(f);
-              fputs("id,valor,grupo,nota\\n", f);
+              fputs("id,valor,grupo,nota\n", f);
               for (size_t i = 0; i < rows; ++i)
-                  fprintf(f, "%zu,%zu,%zu,registro-%zu\\n", i, i * 3, i % 16, i);
+                  fprintf(f, "%zu,%zu,%zu,registro-%zu\n", i, i * 3, i % 16, i);
               assert(fclose(f) == 0);
               Dataset dataset;
               dataset_init(&dataset);
