@@ -8,6 +8,8 @@ on:
         required: false
         default: 'ci'
   push:
+    branches:
+      - windows/ci-cd-hardening
     tags:
       - 'v*'
 
