@@ -90,6 +90,33 @@ jobs:
           cmd.exe /d /c $cmd
           if ($LASTEXITCODE -ne 0) { throw "CMD: falló run con código $LASTEXITCODE" }
           if ((Get-Content $cmdOutput -Raw) -notmatch 'Array datos') { throw 'CMD: salida de array no encontrada' }
+      - name: Validate PATH, CSV inspection, and error handling
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path './dist/windows/milena.exe').Path
+          $bin = Join-Path $env:RUNNER_TEMP 'Milena Portable/bin'
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          Copy-Item $exe (Join-Path $bin 'milena.exe') -Force
+          $env:PATH = "$bin;$env:PATH"
+          $resolved = Get-Command milena.exe -ErrorAction Stop
+          if ($resolved.Source -ne (Join-Path $bin 'milena.exe')) { throw 'PATH no resolvió el ejecutable portable' }
+          & milena.exe
+          if ($LASTEXITCODE -ne 2) { throw "PATH PowerShell: código inesperado $LASTEXITCODE" }
+          $csv = Join-Path $env:RUNNER_TEMP 'datos.csv'
+          @'
+nombre,edad
+Ana,30
+Luis,40
+'@ | Set-Content -Encoding utf8 $csv
+          & milena.exe inspect $csv
+          if ($LASTEXITCODE -ne 0) { throw 'inspect falló desde PATH' }
+          $invalid = Join-Path $env:RUNNER_TEMP 'invalid.milena'
+          'array roto = [1, 2' | Set-Content -Encoding utf8 $invalid
+          & milena.exe run $invalid
+          if ($LASTEXITCODE -eq 0) { throw 'Un script inválido terminó correctamente' }
+          $cmd = "set PATH=$bin;%PATH% && milena.exe inspect `"$csv`""
+          cmd.exe /d /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'CMD no resolvió milena.exe desde PATH' }
       - name: Run Windows runtime tests
         shell: pwsh
         run: |
