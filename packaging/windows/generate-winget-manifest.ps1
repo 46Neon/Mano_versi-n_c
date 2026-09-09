@@ -4,8 +4,8 @@ param(
     [Parameter(Mandatory = $true)][ValidatePattern('^https://')][string]$InstallerUrl,
     [Parameter(Mandatory = $true)][ValidatePattern('^[0-9A-Fa-f]{64}$')][string]$InstallerSha256,
     [ValidateSet('portable', 'exe')][string]$InstallerType = 'portable',
-    [string]$Publisher = '46Neon',
-    [string]$PackageIdentifier = '46Neon.Milena',
+    [string]$Publisher = '46Milena',
+    [string]$PackageIdentifier = '46Milena.Milena',
     [string]$PackageName = 'Milena',
     [string]$PublisherUrl = 'https://github.com/46Neon',
     [string]$PackageUrl = 'https://github.com/46Neon/Milena',
@@ -83,4 +83,5 @@ $installerLines += @('ManifestType: installer', 'ManifestVersion: 1.9.0')
 [System.IO.File]::WriteAllLines((Join-Path $root "$PackageIdentifier.installer.yaml"), $installerLines, $utf8NoBom)
 
 Write-Host "Manifest WinGet generado en $root"
+Write-Host "Publisher: $Publisher | PackageIdentifier: $PackageIdentifier"
 Write-Host "Tipo: $InstallerType | SHA-256: $($InstallerSha256.ToUpperInvariant())"
