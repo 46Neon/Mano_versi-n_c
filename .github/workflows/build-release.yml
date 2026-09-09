@@ -104,10 +104,10 @@ jobs:
           if ($LASTEXITCODE -ne 2) { throw "PATH PowerShell: código inesperado $LASTEXITCODE" }
           $csv = Join-Path $env:RUNNER_TEMP 'datos.csv'
           @'
-nombre,edad
-Ana,30
-Luis,40
-'@ | Set-Content -Encoding utf8 $csv
+          nombre,edad
+          Ana,30
+          Luis,40
+          '@ | Set-Content -Encoding utf8 $csv
           & milena.exe inspect $csv
           if ($LASTEXITCODE -ne 0) { throw 'inspect falló desde PATH' }
           $invalid = Join-Path $env:RUNNER_TEMP 'invalid.milena'
