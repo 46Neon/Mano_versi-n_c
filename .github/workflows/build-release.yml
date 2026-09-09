@@ -46,7 +46,9 @@ jobs:
         run: |
           $output = & ./dist/windows/milena.exe 2>&1
           if ($LASTEXITCODE -ne 2) { throw "milena.exe sin argumentos debe terminar con código 2; obtuvo $LASTEXITCODE" }
-          if ($output -notmatch 'Milena') { throw 'La salida de milena.exe no contiene la identidad esperada' }
+          $text = ($output | Out-String)
+          Write-Host $text
+          if ($text -notmatch 'Milena') { throw 'La salida de milena.exe no contiene la identidad esperada' }
       - name: Run Windows runtime tests
         shell: pwsh
         run: |
