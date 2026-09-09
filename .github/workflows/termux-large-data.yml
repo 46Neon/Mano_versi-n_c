@@ -67,7 +67,26 @@ jobs:
               assert(dataset.invalid_rows == 0);
               dataset_destroy(&dataset);
               remove(path);
-              puts("OK: large CSV import");
+
+              /* A wide dataset: one row and 100,000 columns. */
+              f = fopen(path, "wb");
+              assert(f);
+              for (size_t c = 0; c < 100000; ++c)
+                  fprintf(f, "c%zu%s", c, c + 1 < 100000 ? "," : "\n");
+              for (size_t c = 0; c < 100000; ++c)
+                  fprintf(f, "%zu%s", c, c + 1 < 100000 ? "," : "\n");
+              assert(fclose(f) == 0);
+              dataset_init(&dataset);
+              DatasetLimits wide_limits = { 2, 100000, 64 };
+              status = dataset_load_csv_with_limits(&dataset, path, ',',
+                                                    &wide_limits, &error);
+              assert(status == MILENA_OK);
+              assert(dataset.column_count == 100000);
+              assert(dataset.row_count == 1);
+              assert(dataset.invalid_rows == 0);
+              dataset_destroy(&dataset);
+              remove(path);
+              puts("OK: large CSV import (100,000 rows and 100,000 columns)");
               return 0;
           }
           C
