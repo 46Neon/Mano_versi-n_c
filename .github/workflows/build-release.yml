@@ -78,9 +78,9 @@ jobs:
         run: |
           $script = Join-Path $env:RUNNER_TEMP 'shell-validation.milena'
           @'
-array datos = [1, 2, 3]
-sum(datos)
-'@ | Set-Content -Encoding utf8 $script
+          array datos = [1, 2, 3]
+          sum(datos)
+          '@ | Set-Content -Encoding utf8 $script
           $exe = (Resolve-Path './dist/windows/milena.exe').Path
           $psOutput = & $exe run $script 2>&1
           if ($LASTEXITCODE -ne 0) { throw "PowerShell: falló run con código $LASTEXITCODE" }
