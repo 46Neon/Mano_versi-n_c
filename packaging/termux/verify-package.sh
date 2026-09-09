@@ -23,6 +23,9 @@ arch="$(dpkg-deb -f "$PACKAGE" Architecture)"
     echo "Arquitectura inesperada: $arch (esperada: $EXPECTED_ARCH)" >&2
     exit 1
 }
-dpkg-deb --contents "$PACKAGE" | grep -Fq "./data/data/com.termux/files/usr/bin/milena"
-dpkg-deb --contents "$PACKAGE" | grep -Fq "./data/data/com.termux/files/usr/share/doc/milena/README.md"
+CONTENTS_FILE="$(mktemp)"
+trap 'rm -f "$CONTENTS_FILE"' EXIT
+dpkg-deb --contents "$PACKAGE" > "$CONTENTS_FILE"
+grep -Fq "./data/data/com.termux/files/usr/bin/milena" "$CONTENTS_FILE"
+grep -Fq "./data/data/com.termux/files/usr/share/doc/milena/README.md" "$CONTENTS_FILE"
 printf 'Paquete válido: %s %s %s\n' "$name" "$version" "$arch"
