@@ -1,4 +1,4 @@
-name: Build Mano release artifacts
+name: Build Milena release artifacts
 
 on:
   workflow_dispatch:
@@ -18,17 +18,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y clang make dpkg-dev
-
       - name: Build and test Debian package
         run: ./packaging/debian/build-local-deb.sh
-
       - name: Upload Debian artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mano-debian-amd64
+          name: milena-debian-amd64
           path: dist/debian/*.deb
 
   windows-x64:
@@ -36,42 +33,164 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install LLVM
         shell: pwsh
         run: choco install llvm --no-progress -y
-
       - name: Build Windows executable
         shell: pwsh
+        env:
+          MILENA_VERSION: ${{ github.ref_name }}
         run: ./packaging/windows/build.ps1
-
-      - name: Upload Windows artifact
+      - name: Run Windows executable smoke test
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'milena.stdout.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'milena.stderr.txt'
+          $process = Start-Process -FilePath (Resolve-Path './dist/windows/milena.exe') `
+            -Wait -PassThru -NoNewWindow `
+            -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = ((Get-Content $stdout -Raw -ErrorAction SilentlyContinue),
+                   (Get-Content $stderr -Raw -ErrorAction SilentlyContinue) -join "`n")
+          Write-Host $text
+          if ($process.ExitCode -ne 2) {
+            throw "milena.exe sin argumentos debe terminar con código 2; obtuvo $($process.ExitCode)"
+          }
+          if ($text -notmatch 'Milena') {
+            throw 'La salida de milena.exe no contiene la identidad esperada'
+          }
+      - name: Validate executable from PowerShell and CMD
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path './dist/windows/milena.exe').Path
+          $work = Join-Path $env:RUNNER_TEMP 'milena-shell-check'
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          Push-Location $work
+          try {
+            & $exe
+            if ($LASTEXITCODE -ne 2) { throw "PowerShell: código inesperado $LASTEXITCODE" }
+            Copy-Item $exe (Join-Path $work 'milena.exe') -Force
+            $batch = Join-Path $work 'run-milena.cmd'
+            @'
+            @echo off
+            milena.exe
+            exit /b %ERRORLEVEL%
+          '@ | Set-Content -Encoding ascii $batch
+            $cmdProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $batch `
+              -WorkingDirectory $work -Wait -PassThru -NoNewWindow
+            if ($cmdProcess.ExitCode -ne 2) { throw "CMD: código inesperado $($cmdProcess.ExitCode)" }
+          } finally {
+            Pop-Location
+          }
+      - name: Validate Milena script from PowerShell and CMD
+        shell: pwsh
+        run: |
+          $script = Join-Path $env:RUNNER_TEMP 'shell-validation.milena'
+          @'
+          array datos = [1, 2, 3]
+          sum(datos)
+          '@ | Set-Content -Encoding utf8 $script
+          $exe = (Resolve-Path './dist/windows/milena.exe').Path
+          $psOutput = & $exe run $script 2>&1
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell: falló run con código $LASTEXITCODE" }
+          if (($psOutput | Out-String) -notmatch 'Array datos') { throw 'PowerShell: salida de array no encontrada' }
+          $cmdOutput = Join-Path $env:RUNNER_TEMP 'milena-cmd-script.txt'
+          $cmd = "`"$exe`" run `"$script`" 1>`"$cmdOutput`" 2>&1"
+          cmd.exe /d /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw "CMD: falló run con código $LASTEXITCODE" }
+          if ((Get-Content $cmdOutput -Raw) -notmatch 'Array datos') { throw 'CMD: salida de array no encontrada' }
+      - name: Validate PATH, CSV inspection, and error handling
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path './dist/windows/milena.exe').Path
+          $bin = Join-Path $env:RUNNER_TEMP 'Milena Portable/bin'
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          Copy-Item $exe (Join-Path $bin 'milena.exe') -Force
+          $env:PATH = "$bin;$env:PATH"
+          $resolved = Get-Command milena.exe -ErrorAction Stop
+          if ($resolved.Source -ne (Join-Path $bin 'milena.exe')) { throw 'PATH no resolvió el ejecutable portable' }
+          & milena.exe
+          if ($LASTEXITCODE -ne 2) { throw "PATH PowerShell: código inesperado $LASTEXITCODE" }
+          $csv = Join-Path $env:RUNNER_TEMP 'datos.csv'
+          @'
+          nombre,edad
+          Ana,30
+          Luis,40
+          '@ | Set-Content -Encoding utf8 $csv
+          & milena.exe inspect $csv
+          if ($LASTEXITCODE -ne 0) { throw 'inspect falló desde PATH' }
+          $invalid = Join-Path $env:RUNNER_TEMP 'invalid.milena'
+          'array roto = [1, 2' | Set-Content -Encoding utf8 $invalid
+          & milena.exe run $invalid
+          if ($LASTEXITCODE -eq 0) { throw 'Un script inválido terminó correctamente' }
+          $cmd = "set PATH=$bin;%PATH% && milena.exe inspect `"$csv`""
+          cmd.exe /d /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'CMD no resolvió milena.exe desde PATH' }
+      - name: Run Windows runtime tests
+        shell: pwsh
+        run: |
+          $flags = @('-std=c17','-Wall','-Wextra','-Wpedantic','-O2','-Iinclude')
+          & clang @flags tests/test_array.c src/array.c src/common.c -o dist/windows/test_array.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_array en Windows' }
+          & ./dist/windows/test_array.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_array en Windows' }
+          & clang @flags tests/test_forest.c src/forest.c src/array.c src/common.c -o dist/windows/test_forest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_forest en Windows' }
+          & ./dist/windows/test_forest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_forest en Windows' }
+          & clang @flags tests/test_finance.c src/finance.c src/common.c -o dist/windows/test_finance.exe
+          if ($LASTEXITCODE -ne 0) { throw 'No compiló test_finance en Windows' }
+          & ./dist/windows/test_finance.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falló test_finance en Windows' }
+      - name: Verify Windows artifacts
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/windows/milena.exe)) { throw 'Falta dist/windows/milena.exe' }
+          if (-not (Test-Path dist/windows/milena.exe.sha256)) { throw 'Falta el checksum Windows' }
+          $expected = (Get-Content dist/windows/milena.exe.sha256 -Raw).Trim().ToLowerInvariant()
+          $actual = (Get-FileHash -Algorithm SHA256 dist/windows/milena.exe).Hash.ToLowerInvariant()
+          if ($expected -ne $actual) { throw 'El checksum Windows no coincide' }
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mano-windows-x64
-          path: dist/windows/mano.exe
+          name: milena-windows-x64
+          path: |
+            dist/windows/milena.exe
+            dist/windows/milena.exe.sha256
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [linux-amd64, windows-x64]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: mano-debian-amd64
+          name: milena-debian-amd64
           path: dist
-
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: mano-windows-x64
+          name: milena-windows-x64
           path: dist
-
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/**
           generate_release_notes: true
+      - name: Generate WinGet manifests from published artifact
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          INSTALLER_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/milena.exe
+        run: |
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $hash = (Get-FileHash -Algorithm SHA256 -Path dist/milena.exe).Hash
+          ./packaging/windows/generate-winget-manifest.ps1 `
+            -Version $version `
+            -InstallerUrl $env:INSTALLER_URL `
+            -InstallerSha256 $hash
+      - name: Attach WinGet manifests to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/windows/winget/*.yaml
+          fail_on_unmatched_files: true
