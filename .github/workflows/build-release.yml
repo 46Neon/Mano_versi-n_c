@@ -58,6 +58,21 @@ jobs:
           if ($text -notmatch 'Milena') {
             throw 'La salida de milena.exe no contiene la identidad esperada'
           }
+      - name: Validate executable from PowerShell and CMD
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path './dist/windows/milena.exe').Path
+          $work = Join-Path $env:RUNNER_TEMP 'milena-shell-check'
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          Push-Location $work
+          try {
+            & $exe
+            if ($LASTEXITCODE -ne 2) { throw "PowerShell: código inesperado $LASTEXITCODE" }
+            cmd.exe /d /c "`"$exe`""
+            if ($LASTEXITCODE -ne 2) { throw "CMD: código inesperado $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
       - name: Run Windows runtime tests
         shell: pwsh
         run: |
