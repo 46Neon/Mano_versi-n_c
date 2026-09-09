@@ -1,5 +1,9 @@
 name: Publish Milena Termux APT repository
 
+concurrency:
+  group: milena-termux-apt
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
@@ -20,6 +24,7 @@ env:
 jobs:
   publish-apt:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,6 +76,26 @@ jobs:
           ./packaging/termux/generate-apt-repo.sh dist/inputs dist/apt
           gpg --batch --armor --export "$KEY_ID" > dist/apt/milena-archive-keyring.asc
           test -s dist/apt/milena-archive-keyring.asc
+
+      - name: Validate APT repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/apt/dists/stable/Release
+          test -s dist/apt/dists/stable/InRelease
+          test -s dist/apt/dists/stable/Release.gpg
+          test -s dist/apt/dists/stable/main/binary-aarch64/Packages
+          test -s dist/apt/dists/stable/main/binary-aarch64/Packages.gz
+          grep -Fq 'Package: milena' dist/apt/dists/stable/main/binary-aarch64/Packages
+          test -n "$(find dist/apt/pool -type f -name '*.deb' -print -quit)"
+          dpkg-deb --info "$(find dist/apt/pool -type f -name '*.deb' -print -quit)"
+
+      - name: Create repository checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          find dist/apt -type f -print0 | sort -z | xargs -0 sha256sum > dist/apt/SHA256SUMS
+          test -s dist/apt/SHA256SUMS
 
       - name: Install Netlify CLI
         run: npm install --global netlify-cli
