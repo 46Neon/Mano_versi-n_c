@@ -5,13 +5,14 @@ set -euo pipefail
 # Requiere: dpkg-deb, dpkg-scanpackages, apt-ftparchive y gpg.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="${MANO_VERSION:-0.1.1}"
-RAW_KEY_ID="${MANO_GPG_KEY_ID:?Define MANO_GPG_KEY_ID con la clave de publicación}"
+VERSION="${MILENA_VERSION:-${MANO_VERSION:-0.1.1}}"
+RAW_KEY_ID="${MILENA_GPG_KEY_ID:-${MANO_GPG_KEY_ID:-}}"
+[[ -n "$RAW_KEY_ID" ]] || { echo "Define MILENA_GPG_KEY_ID con la clave de publicación" >&2; exit 1; }
 KEY_ID="$(printf '%s' "$RAW_KEY_ID" | tr -d '[:space:]')"
 KEY_ID="${KEY_ID#rsa3072/}"
 KEY_ID="${KEY_ID#0x}"
 if [[ ! "$KEY_ID" =~ ^[[:xdigit:]]{8,64}$ ]]; then
-    echo "MANO_GPG_KEY_ID no contiene un identificador hexadecimal válido" >&2
+    echo "MILENA_GPG_KEY_ID no contiene un identificador hexadecimal válido" >&2
     exit 1
 fi
 INPUT_DIR="${1:-$ROOT_DIR/dist/termux}"
@@ -27,8 +28,11 @@ done
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR/pool/main/m/milena" "$OUTPUT_DIR/dists/stable/main"
 
-for package in "$INPUT_DIR"/milena_*.deb; do
-    [[ -f "$package" ]] || continue
+shopt -s nullglob
+packages=("$INPUT_DIR"/milena_*.deb)
+(( ${#packages[@]} > 0 )) || { echo "No se encontraron paquetes Milena en $INPUT_DIR" >&2; exit 1; }
+architectures=()
+for package in "${packages[@]}"; do
     arch="$(dpkg-deb -f "$package" Architecture)"
     destination="$OUTPUT_DIR/dists/stable/main/binary-$arch"
     mkdir -p "$destination"
@@ -40,6 +44,10 @@ for package in "$INPUT_DIR"/milena_*.deb; do
     )
     gzip -9c "$destination/Packages" > "$destination/Packages.gz"
 done
+for package in "${packages[@]}"; do
+    arch="$(dpkg-deb -f "$package" Architecture)"
+    if [[ ! " ${architectures[*]} " =~ " $arch " ]]; then architectures+=("$arch"); fi
+done
 
 RELEASE_CONFIG="$OUTPUT_DIR/.apt-ftparchive.conf"
 cat > "$RELEASE_CONFIG" <<EOF
@@ -48,7 +56,7 @@ APT::FTPArchive::Release::Label "Milena APT";
 APT::FTPArchive::Release::Suite "stable";
 APT::FTPArchive::Release::Codename "stable";
 APT::FTPArchive::Release::Components "main";
-APT::FTPArchive::Release::Architectures "aarch64 amd64";
+APT::FTPArchive::Release::Architectures "${architectures[*]}";
 EOF
 apt-ftparchive -c="$RELEASE_CONFIG" release "$OUTPUT_DIR/dists/stable" > "$OUTPUT_DIR/dists/stable/Release"
 rm -f "$RELEASE_CONFIG"
@@ -56,10 +64,11 @@ GPG_ARGS=(--batch --yes --local-user "$KEY_ID")
 PASSPHRASE_FILE=""
 cleanup_passphrase() { [[ -z "$PASSPHRASE_FILE" ]] || rm -f "$PASSPHRASE_FILE"; }
 trap cleanup_passphrase EXIT
-if [[ -n "${MANO_GPG_PASSPHRASE:-}" ]]; then
+PASSPHRASE="${MILENA_GPG_PASSPHRASE:-${MANO_GPG_PASSPHRASE:-}}"
+if [[ -n "$PASSPHRASE" ]]; then
     PASSPHRASE_FILE="$OUTPUT_DIR/.gpg-passphrase"
     umask 077
-    printf '%s' "$MANO_GPG_PASSPHRASE" > "$PASSPHRASE_FILE"
+    printf '%s' "$PASSPHRASE" > "$PASSPHRASE_FILE"
     GPG_ARGS+=(--pinentry-mode loopback --passphrase-file "$PASSPHRASE_FILE")
 fi
 gpg "${GPG_ARGS[@]}" --clearsign \
