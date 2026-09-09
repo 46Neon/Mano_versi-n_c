@@ -103,3 +103,20 @@ jobs:
         with:
           files: dist/**
           generate_release_notes: true
+      - name: Generate WinGet manifests from published artifact
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          INSTALLER_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/milena.exe
+        run: |
+          $version = $env:RELEASE_VERSION.TrimStart('v')
+          $hash = (Get-FileHash -Algorithm SHA256 -Path dist/milena.exe).Hash
+          ./packaging/windows/generate-winget-manifest.ps1 `
+            -Version $version `
+            -InstallerUrl $env:INSTALLER_URL `
+            -InstallerSha256 $hash
+      - name: Attach WinGet manifests to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/windows/winget/*.yaml
+          fail_on_unmatched_files: true
